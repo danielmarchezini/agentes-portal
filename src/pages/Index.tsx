@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useApp } from "@/contexts/AppContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,11 +9,19 @@ import { Bot, Mail, Shield, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
+  const navigate = useNavigate();
+  const { login, isAuthenticated } = useApp();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"email" | "code">("email");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // Redirect if already authenticated
+  if (isAuthenticated) {
+    navigate("/dashboard");
+    return null;
+  }
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,15 +44,24 @@ const Index = () => {
     if (!code) return;
     
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const success = await login(email, code);
+      if (success) {
+        toast({
+          title: "Login realizado com sucesso!",
+          description: "Redirecionando para o dashboard...",
+        });
+        navigate("/dashboard");
+      } else {
+        toast({
+          title: "Código inválido",
+          description: "Verifique o código e tente novamente",
+          variant: "destructive"
+        });
+      }
+    } finally {
       setIsLoading(false);
-      toast({
-        title: "Login realizado com sucesso!",
-        description: "Redirecionando para o dashboard...",
-      });
-      // Here would redirect to dashboard
-    }, 1000);
+    }
   };
 
   return (
