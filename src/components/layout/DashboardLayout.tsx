@@ -1,17 +1,18 @@
-import React from 'react';
-import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { Bot, Users, Shield, Settings, MessageSquare, LogOut } from 'lucide-react';
-import { useApp } from '@/contexts/AppContext';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { hasPermission, getRoleLabel, getRoleIcon } from '@/lib/permissions';
-import { useLocation, Link } from 'react-router-dom';
+import { ReactNode } from "react";
+import { Link, useLocation, Outlet } from "react-router-dom";
+import { useApp } from "@/contexts/AppContext";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { Bot, Users, Shield, Settings, Home, LogOut, MessageSquare, User, Plus, Building2 } from "lucide-react";
+import { hasPermission, getRoleLabel } from "@/lib/permissions";
 
 interface DashboardLayoutProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const { currentUser, logout } = useApp();
   const location = useLocation();
 
@@ -19,42 +20,25 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     return null;
   }
 
-  const menuItems = [
-    {
-      title: 'Agentes IA',
-      icon: Bot,
-      href: '/dashboard',
-      permission: 'Usar agentes (interagir via chat)'
-    },
-    {
-      title: 'Usuários',
-      icon: Users,
-      href: '/users',
-      permission: 'Gerenciar usuários (convidar, editar, desativar)'
-    },
-    {
-      title: 'Permissões',
-      icon: Shield,
-      href: '/permissions',
-      permission: 'Ver a tela de Papéis e Permissões'
-    },
-    {
-      title: 'Configurações',
-      icon: Settings,
-      href: '/settings',
-      permission: 'Gerenciar módulos e configurações da organização'
-    }
+  const navigationItems = [
+    { name: "Dashboard", href: "/dashboard", icon: Home, show: true },
+    { name: "Agentes", href: "/dashboard", icon: Bot, show: true },
+    { name: "Chat", href: "/agents/chat", icon: MessageSquare, show: hasPermission(currentUser?.role || 'member', "Usar agentes (interagir via chat)") },
+    { name: "Usuários", href: "/users", icon: Users, show: hasPermission(currentUser?.role || 'member', "Gerenciar usuários (convidar, editar, desativar)") },
+    { name: "Organização", href: "/organization", icon: Building2, show: hasPermission(currentUser?.role || 'member', "Gerenciar módulos e configurações da organização") },
+    { name: "Permissões", href: "/permissions", icon: Shield, show: hasPermission(currentUser?.role || 'member', "Ver a tela de Papéis e Permissões") },
+    { name: "Configurações", href: "/settings", icon: Settings, show: hasPermission(currentUser?.role || 'member', "Gerenciar módulos e configurações da organização") }
   ];
 
-  const visibleMenuItems = menuItems.filter(item => 
-    hasPermission(currentUser.role, item.permission)
-  );
+  const visibleNavItems = navigationItems.filter(item => item.show);
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen bg-gradient-surface">
-        <Sidebar className="border-r">
-          <SidebarHeader className="p-6">
+    <div className="min-h-screen bg-gradient-surface">
+      {/* Sidebar */}
+      <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-background border-r shadow-elegant">
+        <div className="flex h-full flex-col">
+          {/* Logo */}
+          <div className="flex h-16 items-center border-b px-6">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-primary rounded-lg shadow-primary">
                 <Bot className="w-6 h-6 text-primary-foreground" />
@@ -64,64 +48,70 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                 <p className="text-sm text-muted-foreground">Gestão de IA</p>
               </div>
             </div>
-          </SidebarHeader>
-          
-          <SidebarContent className="px-4">
-            <SidebarMenu>
-              {visibleMenuItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={location.pathname === item.href}>
-                    <Link to={item.href} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent transition-colors">
-                      <item.icon className="w-5 h-5" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarContent>
-
-          <SidebarFooter className="p-4 border-t">
-            <div className="flex items-center gap-3 mb-4">
-              <Avatar className="w-10 h-10">
-                <AvatarFallback className="bg-primary text-primary-foreground">
-                  {currentUser.name.split(' ').map(n => n[0]).join('')}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{currentUser.name}</p>
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <span>{getRoleIcon(currentUser.role)}</span>
-                  {getRoleLabel(currentUser.role)}
-                </p>
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={logout}
-              className="w-full justify-start gap-2"
-            >
-              <LogOut className="w-4 h-4" />
-              Sair
-            </Button>
-          </SidebarFooter>
-        </Sidebar>
-
-        <main className="flex-1 flex flex-col">
-          <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger />
-              <div className="flex-1" />
-            </div>
-          </header>
-          
-          <div className="flex-1 p-6">
-            {children}
           </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 space-y-1 p-4">
+            {visibleNavItems.map((item) => {
+              const isActive = location.pathname === item.href;
+              const Icon = item.icon;
+              
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                    isActive
+                      ? 'bg-primary text-primary-foreground shadow-md'
+                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  }`}
+                >
+                  <Icon className="h-5 w-5" />
+                  {item.name}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* User Profile */}
+          <div className="border-t p-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="w-full justify-start gap-3 p-2 h-auto">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                      {currentUser.name.split(' ').map(n => n[0]).join('')}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-medium">{currentUser.name}</p>
+                    <p className="text-xs text-muted-foreground">{getRoleLabel(currentUser.role)}</p>
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem>
+                  <User className="mr-2 h-4 w-4" />
+                  Perfil
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={logout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <div className="pl-64">
+        <main className="min-h-screen p-6">
+          {children}
         </main>
       </div>
-    </SidebarProvider>
+    </div>
   );
 };
 

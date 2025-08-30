@@ -12,6 +12,7 @@ import PermissionsPage from "./pages/PermissionsPage";
 import SettingsPage from "./pages/SettingsPage";
 import AgentConfigPage from "./pages/AgentConfigPage";
 import AgentChatPage from "./pages/AgentChatPage";
+import OrganizationPage from "./pages/OrganizationPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,11 +30,13 @@ const AppRoutes = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/users" element={<UsersPage />} />
+        <Route path="/organization" element={<OrganizationPage />} />
         <Route path="/permissions" element={<PermissionsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/agents/new" element={<AgentConfigPage />} />
-        <Route path="/agents/:agentId/config" element={<AgentConfigPage />} />
-        <Route path="/agents/:agentId/chat" element={<AgentChatPage />} />
+        <Route path="/agents/edit/:id" element={<AgentConfigPage />} />
+        <Route path="/agents/chat" element={<AgentChatPage />} />
+        <Route path="/agents/chat/:id" element={<AgentChatPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </DashboardLayout>

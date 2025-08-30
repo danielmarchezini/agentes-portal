@@ -32,12 +32,44 @@ export interface Organization {
   id: string;
   name: string;
   domain: string;
+  cnpj: string;
+  address: {
+    street: string;
+    number: string;
+    complement?: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  };
+  contacts: {
+    phone: string;
+    email: string;
+    responsibleName: string;
+    responsibleRole: string;
+  };
+  contract: {
+    plan: string;
+    startDate: string;
+    expirationDate: string;
+    monthlyValue: number;
+    status: 'active' | 'suspended' | 'expired';
+  };
   smtp?: {
     host: string;
     port: number;
     secure: boolean;
     username: string;
     password: string;
+  };
+  notifications: {
+    emailTemplates: {
+      welcome: string;
+      invitation: string;
+      passwordReset: string;
+    };
+    logoUrl?: string;
+    brandColor: string;
   };
 }
 
@@ -61,14 +93,45 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 const mockOrganization: Organization = {
   id: '1',
   name: 'Acme Corporation',
-  domain: 'acme.com'
+  domain: 'acme.com',
+  cnpj: '12.345.678/0001-90',
+  address: {
+    street: 'Rua das Empresas',
+    number: '123',
+    complement: 'Sala 456',
+    neighborhood: 'Centro Empresarial',
+    city: 'São Paulo',
+    state: 'SP',
+    zipCode: '01234-567'
+  },
+  contacts: {
+    phone: '(11) 9999-8888',
+    email: 'contato@acme.com',
+    responsibleName: 'João Silva',
+    responsibleRole: 'CEO'
+  },
+  contract: {
+    plan: 'Enterprise',
+    startDate: '2024-01-01',
+    expirationDate: '2024-12-31',
+    monthlyValue: 2500.00,
+    status: 'active'
+  },
+  notifications: {
+    emailTemplates: {
+      welcome: 'Bem-vindo à {{organizationName}}! Sua conta foi criada com sucesso.',
+      invitation: 'Você foi convidado para participar da {{organizationName}}. Clique no link para aceitar.',
+      passwordReset: 'Solicitação de redefinição de senha para {{organizationName}}.'
+    },
+    brandColor: '#0ea5e9'
+  }
 };
 
 const mockUsers: User[] = [
   {
     id: '1',
-    email: 'admin@acme.com',
-    name: 'Admin Silva',
+    email: 'dmarchezini@gmail.com',
+    name: 'Daniel Marchezini',
     role: 'admin',
     status: 'active',
     createdAt: '2024-01-15',

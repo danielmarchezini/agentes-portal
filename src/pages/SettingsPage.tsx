@@ -5,31 +5,35 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
-import { Settings, Mail, Shield, Save, TestTube } from "lucide-react";
-import { hasPermission } from "@/lib/permissions";
+import { Settings, Mail, Bell, Shield, Palette, Send, TestTube, CheckCircle, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { hasPermission } from "@/lib/permissions";
 
 const SettingsPage = () => {
   const { currentUser, organization, setOrganization } = useApp();
   const { toast } = useToast();
-  
-  // SMTP Settings
-  const [smtpHost, setSmtpHost] = useState(organization?.smtp?.host || "");
-  const [smtpPort, setSmtpPort] = useState(organization?.smtp?.port || 587);
-  const [smtpSecure, setSmtpSecure] = useState<boolean>(organization?.smtp?.secure || true);
-  const [smtpUsername, setSmtpUsername] = useState(organization?.smtp?.username || "");
-  const [smtpPassword, setSmtpPassword] = useState("");
-  
-  // Organization Settings
-  const [orgName, setOrgName] = useState(organization?.name || "");
-  const [orgDomain, setOrgDomain] = useState(organization?.domain || "");
-  
-  // Notification Settings
-  const [emailNotifications, setEmailNotifications] = useState<boolean>(true);
-  const [dailyReports, setDailyReports] = useState<boolean>(false);
-  const [securityAlerts, setSecurityAlerts] = useState<boolean>(true);
+  const [settings, setSettings] = useState({
+    notifications: true,
+    emailAlerts: true,
+    darkMode: false,
+    autoSave: true
+  });
+  const [smtpConfig, setSmtpConfig] = useState(organization?.smtp || {
+    host: '',
+    port: 587,
+    secure: false,
+    username: '',
+    password: ''
+  });
+  const [emailTemplates, setEmailTemplates] = useState(organization?.notifications?.emailTemplates || {
+    welcome: '',
+    invitation: '',
+    passwordReset: ''
+  });
+  const [testEmail, setTestEmail] = useState('');
+  const [isTestingEmail, setIsTestingEmail] = useState(false);
 
   if (!currentUser || !hasPermission(currentUser.role, "Gerenciar módulos e configurações da organização")) {
     return (
@@ -41,50 +45,64 @@ const SettingsPage = () => {
         </div>
       </div>
     );
-  }
+  };
 
-  const handleSaveSmtp = () => {
-    if (!organization) return;
-    
-    const updatedOrg = {
-      ...organization,
-      smtp: {
-        host: smtpHost,
-        port: smtpPort,
-        secure: smtpSecure,
-        username: smtpUsername,
-        password: smtpPassword || organization.smtp?.password || ""
-      }
-    };
-    
-    setOrganization(updatedOrg);
+  const handleSave = () => {
     toast({
-      title: "Configurações SMTP salvas",
-      description: "As configurações de e-mail foram atualizadas com sucesso",
+      title: "Configurações salvas!",
+      description: "Suas configurações foram atualizadas com sucesso.",
     });
   };
 
-  const handleTestSmtp = () => {
+  const handleSaveSMTP = () => {
+    if (organization) {
+      setOrganization({
+        ...organization,
+        smtp: smtpConfig
+      });
+    }
     toast({
-      title: "Teste de SMTP enviado",
-      description: "Um e-mail de teste foi enviado para verificar a configuração",
+      title: "SMTP configurado!",
+      description: "As configurações de e-mail foram salvas com sucesso.",
     });
   };
 
-  const handleSaveOrganization = () => {
-    if (!organization) return;
-    
-    const updatedOrg = {
-      ...organization,
-      name: orgName,
-      domain: orgDomain
-    };
-    
-    setOrganization(updatedOrg);
+  const handleSaveTemplates = () => {
+    if (organization) {
+      setOrganization({
+        ...organization,
+        notifications: {
+          ...organization.notifications,
+          emailTemplates
+        }
+      });
+    }
     toast({
-      title: "Organização atualizada",
-      description: "As informações da organização foram salvas",
+      title: "Templates salvos!",
+      description: "Os templates de e-mail foram atualizados com sucesso.",
     });
+  };
+
+  const handleTestEmail = async () => {
+    if (!testEmail) {
+      toast({
+        title: "Email obrigatório",
+        description: "Digite um e-mail para enviar o teste.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsTestingEmail(true);
+    
+    // Simular envio de email
+    setTimeout(() => {
+      setIsTestingEmail(false);
+      toast({
+        title: "E-mail de teste enviado!",
+        description: `Um e-mail de teste foi enviado para ${testEmail}`,
+      });
+    }, 2000);
   };
 
   return (
@@ -93,210 +111,315 @@ const SettingsPage = () => {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
         <p className="text-muted-foreground">
-          Gerencie as configurações da sua organização
+          Gerencie as configurações da sua organização e notificações
         </p>
       </div>
 
-      <Tabs defaultValue="organization" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="organization" className="flex items-center gap-2">
-            <Shield className="w-4 h-4" />
-            Organização
-          </TabsTrigger>
-          <TabsTrigger value="smtp" className="flex items-center gap-2">
-            <Mail className="w-4 h-4" />
-            E-mail
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className="flex items-center gap-2">
-            <Settings className="w-4 h-4" />
-            Notificações
-          </TabsTrigger>
+      <Tabs defaultValue="general" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="general">Geral</TabsTrigger>
+          <TabsTrigger value="smtp">E-mail/SMTP</TabsTrigger>
+          <TabsTrigger value="templates">Templates</TabsTrigger>
+          <TabsTrigger value="notifications">Notificações</TabsTrigger>
+          <TabsTrigger value="security">Segurança</TabsTrigger>
         </TabsList>
 
-        {/* Organization Settings */}
-        <TabsContent value="organization">
-          <Card className="animate-scale-in">
+        <TabsContent value="general">
+          <Card>
             <CardHeader>
-              <CardTitle>Informações da Organização</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="w-5 h-5" />
+                Configurações Gerais
+              </CardTitle>
               <CardDescription>
-                Configure as informações básicas da sua organização
+                Configurações básicas do sistema
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="orgName">Nome da Organização</Label>
-                  <Input
-                    id="orgName"
-                    value={orgName}
-                    onChange={(e) => setOrgName(e.target.value)}
-                    placeholder="Acme Corporation"
-                  />
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Salvamento Automático</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Salvar alterações automaticamente
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="orgDomain">Domínio</Label>
-                  <Input
-                    id="orgDomain"
-                    value={orgDomain}
-                    onChange={(e) => setOrgDomain(e.target.value)}
-                    placeholder="acme.com"
-                  />
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="flex justify-end">
-                <Button onClick={handleSaveOrganization} className="bg-gradient-primary">
-                  <Save className="w-4 h-4 mr-2" />
-                  Salvar Alterações
-                </Button>
+                <Switch
+                  checked={settings.autoSave}
+                  onCheckedChange={(checked) => setSettings({...settings, autoSave: checked})}
+                />
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* SMTP Settings */}
         <TabsContent value="smtp">
-          <Card className="animate-scale-in">
+          <Card>
             <CardHeader>
-              <CardTitle>Configurações SMTP</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="w-5 h-5" />
+                Configuração SMTP
+              </CardTitle>
               <CardDescription>
-                Configure o servidor SMTP para envio de e-mails da organização
+                Configure o servidor SMTP da sua organização para envio de e-mails
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="smtpHost">Servidor SMTP</Label>
+                <div>
+                  <Label htmlFor="smtp-host">Servidor SMTP</Label>
                   <Input
-                    id="smtpHost"
-                    value={smtpHost}
-                    onChange={(e) => setSmtpHost(e.target.value)}
+                    id="smtp-host"
                     placeholder="smtp.gmail.com"
+                    value={smtpConfig.host}
+                    onChange={(e) => setSmtpConfig({...smtpConfig, host: e.target.value})}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="smtpPort">Porta</Label>
+                <div>
+                  <Label htmlFor="smtp-port">Porta</Label>
                   <Input
-                    id="smtpPort"
+                    id="smtp-port"
                     type="number"
-                    value={smtpPort}
-                    onChange={(e) => setSmtpPort(Number(e.target.value))}
                     placeholder="587"
+                    value={smtpConfig.port}
+                    onChange={(e) => setSmtpConfig({...smtpConfig, port: parseInt(e.target.value)})}
                   />
                 </div>
               </div>
-
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <Label htmlFor="smtp-username">Usuário</Label>
+                  <Input
+                    id="smtp-username"
+                    type="email"
+                    placeholder="seu-email@empresa.com"
+                    value={smtpConfig.username}
+                    onChange={(e) => setSmtpConfig({...smtpConfig, username: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="smtp-password">Senha</Label>
+                  <Input
+                    id="smtp-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={smtpConfig.password}
+                    onChange={(e) => setSmtpConfig({...smtpConfig, password: e.target.value})}
+                  />
+                </div>
+              </div>
               <div className="flex items-center space-x-2">
                 <Switch
-                  id="smtpSecure"
-                  checked={smtpSecure}
-                  onCheckedChange={setSmtpSecure}
+                  id="smtp-secure"
+                  checked={smtpConfig.secure}
+                  onCheckedChange={(checked) => setSmtpConfig({...smtpConfig, secure: checked})}
                 />
-                <Label htmlFor="smtpSecure">Usar conexão segura (SSL/TLS)</Label>
+                <Label htmlFor="smtp-secure">Usar SSL/TLS</Label>
               </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="smtpUsername">Usuário</Label>
-                  <Input
-                    id="smtpUsername"
-                    value={smtpUsername}
-                    onChange={(e) => setSmtpUsername(e.target.value)}
-                    placeholder="seu-email@gmail.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="smtpPassword">Senha</Label>
-                  <Input
-                    id="smtpPassword"
-                    type="password"
-                    value={smtpPassword}
-                    onChange={(e) => setSmtpPassword(e.target.value)}
-                    placeholder="Digite a senha ou deixe em branco para manter"
-                  />
+              <div className="border-t pt-6">
+                <div className="flex gap-4 items-end">
+                  <div className="flex-1">
+                    <Label htmlFor="test-email">Testar Configuração</Label>
+                    <Input
+                      id="test-email"
+                      type="email"
+                      placeholder="email@teste.com"
+                      value={testEmail}
+                      onChange={(e) => setTestEmail(e.target.value)}
+                    />
+                  </div>
+                  <Button onClick={handleTestEmail} disabled={isTestingEmail} variant="outline">
+                    {isTestingEmail ? (
+                      <>
+                        <TestTube className="w-4 h-4 mr-2 animate-spin" />
+                        Enviando...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4 mr-2" />
+                        Testar
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
-
-              <Separator />
-
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={handleTestSmtp}>
-                  <TestTube className="w-4 h-4 mr-2" />
-                  Testar Configuração
-                </Button>
-                <Button onClick={handleSaveSmtp} className="bg-gradient-primary">
-                  <Save className="w-4 h-4 mr-2" />
-                  Salvar SMTP
+              <div className="flex gap-2">
+                <Button onClick={handleSaveSMTP} className="bg-gradient-primary">
+                  Salvar Configurações SMTP
                 </Button>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Notifications Settings */}
-        <TabsContent value="notifications">
-          <Card className="animate-scale-in">
+        <TabsContent value="templates">
+          <Card>
             <CardHeader>
-              <CardTitle>Preferências de Notificação</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="w-5 h-5" />
+                Templates de E-mail
+              </CardTitle>
+              <CardDescription>
+                Personalize os templates de e-mail enviados pelo sistema
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div>
+                <Label htmlFor="welcome-template">Template de Boas-vindas</Label>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Variáveis disponíveis: organizationName, userName, userEmail
+                </p>
+                <Textarea
+                  id="welcome-template"
+                  placeholder="Bem-vindo à {{organizationName}}! Sua conta foi criada com sucesso."
+                  value={emailTemplates.welcome}
+                  onChange={(e) => setEmailTemplates({...emailTemplates, welcome: e.target.value})}
+                  rows={4}
+                />
+              </div>
+              <div>
+                <Label htmlFor="invitation-template">Template de Convite</Label>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Variáveis disponíveis: organizationName, inviterName, inviteLink
+                </p>
+                <Textarea
+                  id="invitation-template"
+                  placeholder="Você foi convidado para participar da {{organizationName}}. Clique no link para aceitar: {{inviteLink}}"
+                  value={emailTemplates.invitation}
+                  onChange={(e) => setEmailTemplates({...emailTemplates, invitation: e.target.value})}
+                  rows={4}
+                />
+              </div>
+              <div>
+                <Label htmlFor="password-reset-template">Template de Redefinição de Senha</Label>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Variáveis disponíveis: organizationName, resetLink, userName
+                </p>
+                <Textarea
+                  id="password-reset-template"
+                  placeholder="Solicitação de redefinição de senha para {{organizationName}}. Clique no link: {{resetLink}}"
+                  value={emailTemplates.passwordReset}
+                  onChange={(e) => setEmailTemplates({...emailTemplates, passwordReset: e.target.value})}
+                  rows={4}
+                />
+              </div>
+              <Button onClick={handleSaveTemplates} className="bg-gradient-primary">
+                Salvar Templates
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="notifications">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="w-5 h-5" />
+                Notificações
+              </CardTitle>
               <CardDescription>
                 Configure como e quando você deseja receber notificações
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label>Notificações por E-mail</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Receber notificações importantes por e-mail
-                    </p>
-                  </div>
-                  <Switch
-                    checked={emailNotifications}
-                    onCheckedChange={setEmailNotifications}
-                  />
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Notificações por E-mail</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Receba notificações importantes por e-mail
+                  </p>
                 </div>
-
-                <Separator />
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label>Relatórios Diários</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Receber resumo diário de atividades
-                    </p>
-                  </div>
-                  <Switch
-                    checked={dailyReports}
-                    onCheckedChange={setDailyReports}
-                  />
+                <Switch
+                  checked={settings.emailAlerts}
+                  onCheckedChange={(checked) => setSettings({...settings, emailAlerts: checked})}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Notificações Push</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Receba notificações instantâneas no navegador
+                  </p>
                 </div>
-
-                <Separator />
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label>Alertas de Segurança</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Notificações sobre tentativas de acesso e atividades suspeitas
-                    </p>
+                <Switch
+                  checked={settings.notifications}
+                  onCheckedChange={(checked) => setSettings({...settings, notifications: checked})}
+                />
+              </div>
+              <div className="space-y-4 border-t pt-6">
+                <h4 className="font-medium">Tipos de Notificação</h4>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Novos usuários</Label>
+                      <p className="text-sm text-muted-foreground">Quando um novo usuário se cadastrar</p>
+                    </div>
+                    <Switch defaultChecked />
                   </div>
-                  <Switch
-                    checked={securityAlerts}
-                    onCheckedChange={setSecurityAlerts}
-                  />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Agentes criados</Label>
+                      <p className="text-sm text-muted-foreground">Quando um novo agente for criado</p>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Sugestões de prompt</Label>
+                      <p className="text-sm text-muted-foreground">Quando houver sugestões pendentes</p>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Vencimento de contrato</Label>
+                      <p className="text-sm text-muted-foreground">Lembrete de renovação do contrato</p>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-              <Separator />
-
-              <div className="flex justify-end">
-                <Button className="bg-gradient-primary">
-                  <Save className="w-4 h-4 mr-2" />
-                  Salvar Preferências
-                </Button>
+        <TabsContent value="security">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                Segurança
+              </CardTitle>
+              <CardDescription>
+                Configurações de segurança da plataforma
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Autenticação de Dois Fatores</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Adicione uma camada extra de segurança
+                  </p>
+                </div>
+                <Switch defaultChecked={false} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Log de Auditoria</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Registrar todas as ações importantes
+                  </p>
+                </div>
+                <Switch defaultChecked />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Bloqueio por Tentativas</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Bloquear usuário após tentativas de login falhas
+                  </p>
+                </div>
+                <Switch defaultChecked />
               </div>
             </CardContent>
           </Card>
