@@ -150,14 +150,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const login = async (email: string, code: string): Promise<boolean> => {
-    // Mock login logic
-    const user = mockUsers.find(u => u.email === email);
-    if (user && code === '123456') {
-      setCurrentUser(user);
-      setIsAuthenticated(true);
-      return true;
+    // Mock login logic - accept any email with the code 123456
+    if (code !== '123456' || !email) return false;
+
+    // Try to find existing user in state
+    let user = users.find(u => u.email === email) || null;
+
+    if (!user) {
+      const nameFromEmail = email.split('@')[0]?.replace(/[._-]/g, ' ') || 'Novo Usuário';
+      const today = new Date().toISOString().slice(0, 10);
+      user = {
+        id: String(Date.now()),
+        email,
+        name: nameFromEmail.charAt(0).toUpperCase() + nameFromEmail.slice(1),
+        role: 'member',
+        status: 'active',
+        createdAt: today,
+        lastLogin: today,
+      };
+      setUsers([...users, user]);
+    } else {
+      // Update last login for existing user
+      user = { ...user, lastLogin: new Date().toISOString().slice(0, 10) };
+      setUsers(users.map(u => (u.id === user!.id ? user! : u)));
     }
-    return false;
+
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+    return true;
   };
 
   const logout = () => {
