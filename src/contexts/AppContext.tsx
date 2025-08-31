@@ -2,6 +2,18 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 export type UserRole = 'owner' | 'admin' | 'bot_manager' | 'member';
 
+export interface LLMProvider {
+  id: string;
+  name: string;
+  models: {
+    id: string;
+    name: string;
+    description?: string;
+  }[];
+  apiKeyRequired: boolean;
+  enabled: boolean;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -71,6 +83,7 @@ export interface Organization {
     logoUrl?: string;
     brandColor: string;
   };
+  llmProviders?: LLMProvider[];
 }
 
 interface AppContextType {
@@ -124,7 +137,51 @@ const mockOrganization: Organization = {
       passwordReset: 'Solicitação de redefinição de senha para {{organizationName}}.'
     },
     brandColor: '#0ea5e9'
-  }
+  },
+  llmProviders: [
+    {
+      id: "openai",
+      name: "OpenAI",
+      models: [
+        { id: "gpt-4", name: "GPT-4", description: "Modelo mais avançado da OpenAI" },
+        { id: "gpt-4-turbo", name: "GPT-4 Turbo", description: "Versão otimizada do GPT-4" },
+        { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", description: "Modelo rápido e eficiente" }
+      ],
+      apiKeyRequired: true,
+      enabled: true
+    },
+    {
+      id: "anthropic",
+      name: "Anthropic",
+      models: [
+        { id: "claude-3-opus", name: "Claude 3 Opus", description: "O modelo mais poderoso da Anthropic" },
+        { id: "claude-3-sonnet", name: "Claude 3 Sonnet", description: "Equilibra performance e custo" },
+        { id: "claude-3-haiku", name: "Claude 3 Haiku", description: "Modelo rápido e econômico" }
+      ],
+      apiKeyRequired: true,
+      enabled: true
+    },
+    {
+      id: "google",
+      name: "Google",
+      models: [
+        { id: "gemini-pro", name: "Gemini Pro", description: "Modelo avançado do Google" },
+        { id: "gemini-pro-vision", name: "Gemini Pro Vision", description: "Modelo com capacidades visuais" }
+      ],
+      apiKeyRequired: true,
+      enabled: true
+    },
+    {
+      id: "cohere",
+      name: "Cohere",
+      models: [
+        { id: "command", name: "Command", description: "Modelo de linguagem da Cohere" },
+        { id: "command-light", name: "Command Light", description: "Versão otimizada do Command" }
+      ],
+      apiKeyRequired: true,
+      enabled: false
+    }
+  ]
 };
 
 const mockUsers: User[] = [

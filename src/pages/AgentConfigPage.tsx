@@ -19,7 +19,7 @@ const AgentConfigPage = () => {
   const { agentId, id } = useParams();
   const routeAgentId = agentId ?? id;
   const navigate = useNavigate();
-  const { currentUser, agents, setAgents } = useApp();
+  const { currentUser, agents, setAgents, organization } = useApp();
   const { toast } = useToast();
 
   const agent = agents.find(a => a.id === routeAgentId);
@@ -65,7 +65,7 @@ const AgentConfigPage = () => {
   }
 
   const handleSave = () => {
-    if (!name || !description || !category || !systemPrompt) {
+    if (!name || !description || !category || !systemPrompt || !model) {
       toast({
         title: "Campos obrigatórios",
         description: "Preencha todos os campos obrigatórios",
@@ -107,11 +107,27 @@ const AgentConfigPage = () => {
     navigate("/dashboard");
   };
 
-  const models = [
-    { value: "gpt-4", label: "GPT-4" },
-    { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
-    { value: "claude-3", label: "Claude 3" },
-    { value: "gemini-pro", label: "Gemini Pro" }
+  // Get available models from organization's LLM providers
+  const availableModels = [];
+  if (organization?.llmProviders) {
+    for (const provider of organization.llmProviders) {
+      if (provider.enabled) {
+        for (const modelInfo of provider.models) {
+          availableModels.push({
+            value: modelInfo.id,
+            label: `${modelInfo.name} (${provider.name})`,
+            description: modelInfo.description,
+            provider: provider.name
+          });
+        }
+      }
+    }
+  }
+  
+  // Fallback models if no providers configured
+  const models = availableModels.length > 0 ? availableModels : [
+    { value: "gpt-4", label: "GPT-4", description: "Modelo padrão", provider: "OpenAI" },
+    { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo", description: "Modelo rápido", provider: "OpenAI" }
   ];
 
   const categories = ["Análise", "Criatividade", "Suporte", "Automação", "Pesquisa"];
@@ -199,18 +215,28 @@ const AgentConfigPage = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="model">Modelo de IA</Label>
-                <Select value={model} onValueChange={setModel}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {models.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>
-                        {m.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <Select value={model} onValueChange={setModel}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um modelo de IA" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {models.map((m) => (
+                        <SelectItem key={m.value} value={m.value}>
+                          <div className="flex flex-col">
+                            <span>{m.label}</span>
+                            {m.description && (
+                              <span className="text-xs text-muted-foreground">{m.description}</span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {models.length === 0 && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Nenhum modelo de IA configurado. Configure os provedores de LLM nas configurações da organização.
+                    </p>
+                  )}
               </div>
 
               <div className="space-y-2">

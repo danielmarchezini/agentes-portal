@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Settings, Mail, Bell, Shield, Palette, Send, TestTube, CheckCircle, AlertCircle } from "lucide-react";
+import { Settings, Mail, Bell, Shield, Palette, Send, TestTube, CheckCircle, AlertCircle, Bot, Key, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { hasPermission } from "@/lib/permissions";
 
@@ -116,8 +116,9 @@ const SettingsPage = () => {
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="general">Geral</TabsTrigger>
+          <TabsTrigger value="llm">LLM/IA</TabsTrigger>
           <TabsTrigger value="smtp">E-mail/SMTP</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="notifications">Notificações</TabsTrigger>
@@ -147,6 +148,87 @@ const SettingsPage = () => {
                   checked={settings.autoSave}
                   onCheckedChange={(checked) => setSettings({...settings, autoSave: checked})}
                 />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="llm">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bot className="w-5 h-5" />
+                Configuração de LLMs
+              </CardTitle>
+              <CardDescription>
+                Configure os provedores de IA disponíveis para os agentes
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {organization?.llmProviders?.map((provider) => (
+                <div key={provider.id} className="border rounded-lg p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <Bot className="w-5 h-5" />
+                        <h3 className="font-semibold">{provider.name}</h3>
+                      </div>
+                      {provider.apiKeyRequired && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Key className="w-3 h-3" />
+                          API Key necessária
+                        </div>
+                      )}
+                    </div>
+                    <Switch
+                      checked={provider.enabled}
+                      onCheckedChange={(checked) => {
+                        if (organization) {
+                          const updatedProviders = organization.llmProviders?.map(p =>
+                            p.id === provider.id ? { ...p, enabled: checked } : p
+                          );
+                          setOrganization({
+                            ...organization,
+                            llmProviders: updatedProviders
+                          });
+                        }
+                      }}
+                    />
+                  </div>
+                  
+                  <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+                    {provider.models.map((model) => (
+                      <div key={model.id} className="p-3 border rounded bg-muted/30">
+                        <p className="font-medium text-sm">{model.name}</p>
+                        {model.description && (
+                          <p className="text-xs text-muted-foreground mt-1">{model.description}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {provider.apiKeyRequired && provider.enabled && (
+                    <div className="space-y-2">
+                      <Label htmlFor={`apikey-${provider.id}`}>API Key</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id={`apikey-${provider.id}`}
+                          type="password"
+                          placeholder="Insira sua API Key"
+                        />
+                        <Button size="sm" variant="outline">
+                          <Save className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              <div className="flex gap-2 pt-4 border-t">
+                <Button onClick={handleSave} className="bg-gradient-primary">
+                  Salvar Configurações de LLM
+                </Button>
               </div>
             </CardContent>
           </Card>
