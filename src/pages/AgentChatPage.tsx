@@ -18,7 +18,8 @@ interface Message {
 }
 
 const AgentChatPage = () => {
-  const { agentId } = useParams();
+  const { agentId, id } = useParams();
+  const routeAgentId = agentId ?? id;
   const navigate = useNavigate();
   const { currentUser, agents } = useApp();
   const [messages, setMessages] = useState<Message[]>([
@@ -31,7 +32,7 @@ const AgentChatPage = () => {
   ]);
   const [newMessage, setNewMessage] = useState("");
 
-  const agent = agents.find(a => a.id === agentId);
+  const agent = agents.find(a => a.id === routeAgentId);
 
   if (!currentUser) return null;
 

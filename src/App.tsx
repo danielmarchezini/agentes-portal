@@ -37,6 +37,7 @@ const AppRoutes = () => {
         <Route path="/agents/edit/:id" element={<AgentConfigPage />} />
         <Route path="/agents/chat" element={<AgentChatPage />} />
         <Route path="/agents/chat/:id" element={<AgentChatPage />} />
+        <Route path="/agents/:id/chat" element={<AgentChatPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </DashboardLayout>
