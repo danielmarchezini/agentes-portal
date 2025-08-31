@@ -16,13 +16,14 @@ import { useToast } from "@/hooks/use-toast";
 import { Agent } from "@/contexts/AppContext";
 
 const AgentConfigPage = () => {
-  const { agentId } = useParams();
+  const { agentId, id } = useParams();
+  const routeAgentId = agentId ?? id;
   const navigate = useNavigate();
   const { currentUser, agents, setAgents } = useApp();
   const { toast } = useToast();
 
-  const agent = agents.find(a => a.id === agentId);
-  const isNewAgent = agentId === "new";
+  const agent = agents.find(a => a.id === routeAgentId);
+  const isNewAgent = !routeAgentId;
 
   const [name, setName] = useState(agent?.name || "");
   const [description, setDescription] = useState(agent?.description || "");
