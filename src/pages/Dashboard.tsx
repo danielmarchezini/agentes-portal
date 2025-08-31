@@ -192,7 +192,7 @@ const Dashboard = () => {
                 </Button>
                 {hasPermission(currentUser.role, "Editar a configuração de um agente") && (
                   <Button asChild variant="outline" size="sm">
-                    <Link to={`/agents/${agent.id}/config`}>
+                    <Link to={`/agents/edit/${agent.id}`}>
                       Configurar
                     </Link>
                   </Button>

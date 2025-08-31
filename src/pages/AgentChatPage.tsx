@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useApp } from "@/contexts/AppContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,9 +32,19 @@ const AgentChatPage = () => {
   ]);
   const [newMessage, setNewMessage] = useState("");
 
+  // Redirect to first agent when no id is provided
+  useEffect(() => {
+    if (!routeAgentId && agents.length > 0) {
+      navigate(`/agents/chat/${agents[0].id}`, { replace: true });
+    }
+  }, [routeAgentId, agents, navigate]);
+
   const agent = agents.find(a => a.id === routeAgentId);
 
   if (!currentUser) return null;
+
+  // Wait for redirect to attach an agent id
+  if (!routeAgentId) return null;
 
   if (!agent) {
     return (
@@ -109,7 +119,7 @@ const AgentChatPage = () => {
         </div>
         <div className="flex items-center gap-2">
           <Button asChild variant="outline" size="sm">
-            <Link to={`/agents/${agent.id}/config`}>
+            <Link to={`/agents/edit/${agent.id}`}>
               <Settings className="w-4 h-4 mr-2" />
               Configurar
             </Link>

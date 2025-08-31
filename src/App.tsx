@@ -35,6 +35,7 @@ const AppRoutes = () => {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/agents/new" element={<AgentConfigPage />} />
         <Route path="/agents/edit/:id" element={<AgentConfigPage />} />
+        <Route path="/agents/:id/config" element={<AgentConfigPage />} />
         <Route path="/agents/chat" element={<AgentChatPage />} />
         <Route path="/agents/chat/:id" element={<AgentChatPage />} />
         <Route path="/agents/:id/chat" element={<AgentChatPage />} />
