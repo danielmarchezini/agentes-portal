@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Bot, Save, ArrowLeft, History, Users, MessageSquare } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Bot, Save, ArrowLeft, History, Users, MessageSquare, Sparkles, Code } from "lucide-react";
 import { hasPermission } from "@/lib/permissions";
 import { useToast } from "@/hooks/use-toast";
 import { Agent } from "@/contexts/AppContext";
@@ -25,6 +26,8 @@ const AgentConfigPage = () => {
   const agent = agents.find(a => a.id === routeAgentId);
   const isNewAgent = !routeAgentId;
 
+  const [agentType, setAgentType] = useState<'custom' | 'assistant'>('custom');
+  const [selectedAssistant, setSelectedAssistant] = useState('');
   const [name, setName] = useState(agent?.name || "");
   const [description, setDescription] = useState(agent?.description || "");
   const [category, setCategory] = useState(agent?.category || "");
@@ -109,6 +112,8 @@ const AgentConfigPage = () => {
 
   // Get available models from organization's LLM providers
   const availableModels = [];
+  const availableAssistants = [];
+  
   if (organization?.llmProviders) {
     for (const provider of organization.llmProviders) {
       if (provider.enabled) {
@@ -119,6 +124,25 @@ const AgentConfigPage = () => {
             description: modelInfo.description,
             provider: provider.name
           });
+        }
+
+        // Add pre-built assistants for each provider
+        if (provider.name === 'OpenAI') {
+          availableAssistants.push(
+            { value: 'gpt-4-assistant-1', label: 'Code Assistant', description: 'Especialista em desenvolvimento de código', provider: 'OpenAI' },
+            { value: 'gpt-4-assistant-2', label: 'Data Analyst', description: 'Especialista em análise de dados', provider: 'OpenAI' },
+            { value: 'gpt-4-assistant-3', label: 'Writing Helper', description: 'Assistente para escrita e redação', provider: 'OpenAI' }
+          );
+        } else if (provider.name === 'Anthropic') {
+          availableAssistants.push(
+            { value: 'claude-assistant-1', label: 'Research Assistant', description: 'Especialista em pesquisa e análise', provider: 'Anthropic' },
+            { value: 'claude-assistant-2', label: 'Creative Writer', description: 'Assistente criativo para escrita', provider: 'Anthropic' }
+          );
+        } else if (provider.name === 'Google') {
+          availableAssistants.push(
+            { value: 'gemini-assistant-1', label: 'Gemini Pro Assistant', description: 'Assistente multimodal avançado', provider: 'Google' },
+            { value: 'gemini-assistant-2', label: 'Document Helper', description: 'Especialista em processamento de documentos', provider: 'Google' }
+          );
         }
       }
     }
@@ -167,14 +191,100 @@ const AgentConfigPage = () => {
 
         {/* Configuration Tab */}
         <TabsContent value="config">
+          {isNewAgent && (
+            <Card className="animate-scale-in mb-6">
+              <CardHeader>
+                <CardTitle>Tipo de Agente</CardTitle>
+                <CardDescription>
+                  Escolha como deseja criar seu agente
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <RadioGroup value={agentType} onValueChange={(value) => setAgentType(value as 'custom' | 'assistant')} className="space-y-4">
+                  <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-accent/50 cursor-pointer">
+                    <RadioGroupItem value="custom" id="custom" />
+                    <div className="flex items-center gap-3 flex-1">
+                      <Code className="w-5 h-5 text-primary" />
+                      <div>
+                        <Label htmlFor="custom" className="font-medium cursor-pointer">
+                          Agente Personalizado
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Crie um agente do zero selecionando modelo e definindo prompts
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-accent/50 cursor-pointer">
+                    <RadioGroupItem value="assistant" id="assistant" />
+                    <div className="flex items-center gap-3 flex-1">
+                      <Sparkles className="w-5 h-5 text-primary" />
+                      <div>
+                        <Label htmlFor="assistant" className="font-medium cursor-pointer">
+                          Assistente Existente
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Use assistentes pré-desenvolvidos das principais APIs (OpenAI, Anthropic, Google)
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </RadioGroup>
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="animate-scale-in">
             <CardHeader>
-              <CardTitle>Configuração do Agente</CardTitle>
+              <CardTitle>
+                {agentType === 'custom' ? 'Configuração do Agente' : 'Configurar Assistente'}
+              </CardTitle>
               <CardDescription>
-                Configure o comportamento e características do agente
+                {agentType === 'custom' 
+                  ? 'Configure o comportamento e características do agente'
+                  : 'Selecione e configure um assistente pré-desenvolvido'
+                }
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {agentType === 'assistant' && isNewAgent && (
+                <div className="space-y-2">
+                  <Label htmlFor="assistant-select">Assistente *</Label>
+                  <Select value={selectedAssistant} onValueChange={(value) => {
+                    setSelectedAssistant(value);
+                    const assistant = availableAssistants.find(a => a.value === value);
+                    if (assistant) {
+                      setName(assistant.label);
+                      setDescription(assistant.description);
+                      setModel(assistant.value);
+                      setCategory("Pré-configurado");
+                      setSystemPrompt(`Você é um ${assistant.label}. ${assistant.description}.`);
+                    }
+                  }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um assistente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableAssistants.map((assistant) => (
+                        <SelectItem key={assistant.value} value={assistant.value}>
+                          <div className="flex flex-col">
+                            <span>{assistant.label}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {assistant.description} - {assistant.provider}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {availableAssistants.length === 0 && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Nenhum assistente disponível. Configure os provedores de LLM nas configurações da organização.
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome do Agente *</Label>
@@ -183,11 +293,12 @@ const AgentConfigPage = () => {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Ex: Assistente de Análise"
+                    disabled={agentType === 'assistant' && selectedAssistant && isNewAgent}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="category">Categoria *</Label>
-                  <Select value={category} onValueChange={setCategory}>
+                  <Select value={category} onValueChange={setCategory} disabled={agentType === 'assistant' && selectedAssistant && isNewAgent}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione uma categoria" />
                     </SelectTrigger>
@@ -213,45 +324,65 @@ const AgentConfigPage = () => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="model">Modelo de IA</Label>
-                  <Select value={model} onValueChange={setModel}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um modelo de IA" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {models.map((m) => (
-                        <SelectItem key={m.value} value={m.value}>
-                          <div className="flex flex-col">
-                            <span>{m.label}</span>
-                            {m.description && (
-                              <span className="text-xs text-muted-foreground">{m.description}</span>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {models.length === 0 && (
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Nenhum modelo de IA configurado. Configure os provedores de LLM nas configurações da organização.
-                    </p>
-                  )}
-              </div>
+              {agentType === 'custom' && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="model">Modelo de IA</Label>
+                    <Select value={model} onValueChange={setModel}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um modelo de IA" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {models.map((m) => (
+                          <SelectItem key={m.value} value={m.value}>
+                            <div className="flex flex-col">
+                              <span>{m.label}</span>
+                              {m.description && (
+                                <span className="text-xs text-muted-foreground">{m.description}</span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {models.length === 0 && (
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Nenhum modelo de IA configurado. Configure os provedores de LLM nas configurações da organização.
+                      </p>
+                    )}
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="systemPrompt">Prompt do Sistema *</Label>
-                <Textarea
-                  id="systemPrompt"
-                  value={systemPrompt}
-                  onChange={(e) => setSystemPrompt(e.target.value)}
-                  placeholder="Defina a personalidade e comportamento do agente..."
-                  rows={6}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Este prompt define como o agente se comportará nas conversas
-                </p>
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="systemPrompt">Prompt do Sistema *</Label>
+                    <Textarea
+                      id="systemPrompt"
+                      value={systemPrompt}
+                      onChange={(e) => setSystemPrompt(e.target.value)}
+                      placeholder="Defina a personalidade e comportamento do agente..."
+                      rows={6}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Este prompt define como o agente se comportará nas conversas
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {agentType === 'assistant' && (
+                <div className="space-y-2">
+                  <Label htmlFor="systemPrompt">Instruções Adicionais</Label>
+                  <Textarea
+                    id="systemPrompt"
+                    value={systemPrompt}
+                    onChange={(e) => setSystemPrompt(e.target.value)}
+                    placeholder="Adicione instruções específicas para personalizar o comportamento do assistente (opcional)..."
+                    rows={4}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Personalize o comportamento do assistente com instruções adicionais
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="tags">Tags</Label>
