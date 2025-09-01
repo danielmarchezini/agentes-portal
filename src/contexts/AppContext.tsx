@@ -84,6 +84,14 @@ export interface Organization {
     brandColor: string;
   };
   llmProviders?: LLMProvider[];
+  branding?: {
+    logo?: string;
+    colors?: {
+      primary?: string;
+      secondary?: string;
+      accent?: string;
+    };
+  };
 }
 
 interface AppContextType {
@@ -181,7 +189,15 @@ const mockOrganization: Organization = {
       apiKeyRequired: true,
       enabled: false
     }
-  ]
+  ],
+  branding: {
+    logo: '',
+    colors: {
+      primary: '222.2 84% 4.9%',
+      secondary: '210 40% 98%',
+      accent: '210 40% 96%'
+    }
+  }
 };
 
 const mockUsers: User[] = [

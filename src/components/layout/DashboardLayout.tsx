@@ -13,7 +13,7 @@ interface DashboardLayoutProps {
 }
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const { currentUser, logout } = useApp();
+  const { currentUser, logout, organization } = useApp();
   const location = useLocation();
 
   if (!currentUser) {
@@ -40,9 +40,19 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           {/* Logo */}
           <div className="flex h-16 items-center border-b px-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-primary rounded-lg shadow-primary">
-                <Bot className="w-6 h-6 text-primary-foreground" />
-              </div>
+              {organization?.branding?.logo ? (
+                <div className="w-10 h-10 bg-gradient-primary rounded-lg shadow-primary overflow-hidden">
+                  <img 
+                    src={organization.branding.logo} 
+                    alt="Logo" 
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="p-2 bg-gradient-primary rounded-lg shadow-primary">
+                  <Bot className="w-6 h-6 text-primary-foreground" />
+                </div>
+              )}
               <div>
                 <h2 className="font-bold text-lg">AI Portal</h2>
                 <p className="text-sm text-muted-foreground">Gestão de IA</p>

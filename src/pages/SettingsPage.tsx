@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Settings, Mail, Bell, Shield, Palette, Send, TestTube, CheckCircle, AlertCircle, Bot, Key, Save } from "lucide-react";
+import { Settings, Mail, Bell, Shield, Palette, Send, TestTube, CheckCircle, AlertCircle, Bot, Key, Save, Upload, Image } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { hasPermission } from "@/lib/permissions";
 
@@ -34,6 +34,14 @@ const SettingsPage = () => {
   });
   const [testEmail, setTestEmail] = useState('');
   const [isTestingEmail, setIsTestingEmail] = useState(false);
+  const [branding, setBranding] = useState(organization?.branding || {
+    logo: '',
+    colors: {
+      primary: '222.2 84% 4.9%',
+      secondary: '210 40% 98%',
+      accent: '210 40% 96%'
+    }
+  });
 
   if (!currentUser || !hasPermission(currentUser.role, "Gerenciar módulos e configurações da organização")) {
     return (
@@ -105,6 +113,46 @@ const SettingsPage = () => {
     }, 2000);
   };
 
+  const handleSaveBranding = () => {
+    if (organization) {
+      setOrganization({
+        ...organization,
+        branding
+      });
+    }
+    
+    // Apply colors to document root
+    const root = document.documentElement;
+    if (branding.colors?.primary) {
+      root.style.setProperty('--primary', branding.colors.primary);
+    }
+    if (branding.colors?.secondary) {
+      root.style.setProperty('--secondary', branding.colors.secondary);
+    }
+    if (branding.colors?.accent) {
+      root.style.setProperty('--accent', branding.colors.accent);
+    }
+    
+    toast({
+      title: "Marca salva!",
+      description: "As configurações de marca foram atualizadas com sucesso.",
+    });
+  };
+
+  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setBranding({
+          ...branding,
+          logo: e.target?.result as string
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -116,8 +164,9 @@ const SettingsPage = () => {
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="general">Geral</TabsTrigger>
+          <TabsTrigger value="branding">Marca</TabsTrigger>
           <TabsTrigger value="llm">LLM/IA</TabsTrigger>
           <TabsTrigger value="smtp">E-mail/SMTP</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
@@ -148,6 +197,147 @@ const SettingsPage = () => {
                   checked={settings.autoSave}
                   onCheckedChange={(checked) => setSettings({...settings, autoSave: checked})}
                 />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="branding">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Palette className="w-5 h-5" />
+                Identidade Visual
+              </CardTitle>
+              <CardDescription>
+                Personalize as cores e logomarca da sua organização
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Logo Upload */}
+              <div className="space-y-4">
+                <div>
+                  <Label>Logomarca</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Faça upload da logo da sua empresa (PNG, JPG ou SVG)
+                  </p>
+                </div>
+                <div className="flex items-center gap-4">
+                  {branding.logo && (
+                    <div className="relative w-20 h-20 border rounded-lg overflow-hidden bg-muted">
+                      <img 
+                        src={branding.logo} 
+                        alt="Logo preview" 
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <input
+                      type="file"
+                      id="logo-upload"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                    />
+                    <Button asChild variant="outline">
+                      <label htmlFor="logo-upload" className="cursor-pointer">
+                        <Upload className="w-4 h-4 mr-2" />
+                        {branding.logo ? 'Alterar Logo' : 'Upload Logo'}
+                      </label>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Color Customization */}
+              <div className="space-y-4">
+                <div>
+                  <Label>Cores do Sistema</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Personalize as cores principais do sistema (formato HSL)
+                  </p>
+                </div>
+                
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="primary-color">Cor Primária</Label>
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-10 h-10 rounded border"
+                        style={{ backgroundColor: `hsl(${branding.colors?.primary})` }}
+                      />
+                      <Input
+                        id="primary-color"
+                        placeholder="222.2 84% 4.9%"
+                        value={branding.colors?.primary || ''}
+                        onChange={(e) => setBranding({
+                          ...branding,
+                          colors: { ...branding.colors, primary: e.target.value }
+                        })}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="secondary-color">Cor Secundária</Label>
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-10 h-10 rounded border"
+                        style={{ backgroundColor: `hsl(${branding.colors?.secondary})` }}
+                      />
+                      <Input
+                        id="secondary-color"
+                        placeholder="210 40% 98%"
+                        value={branding.colors?.secondary || ''}
+                        onChange={(e) => setBranding({
+                          ...branding,
+                          colors: { ...branding.colors, secondary: e.target.value }
+                        })}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="accent-color">Cor de Destaque</Label>
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-10 h-10 rounded border"
+                        style={{ backgroundColor: `hsl(${branding.colors?.accent})` }}
+                      />
+                      <Input
+                        id="accent-color"
+                        placeholder="210 40% 96%"
+                        value={branding.colors?.accent || ''}
+                        onChange={(e) => setBranding({
+                          ...branding,
+                          colors: { ...branding.colors, accent: e.target.value }
+                        })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 border rounded-lg bg-muted/30">
+                  <p className="text-sm text-muted-foreground mb-2">Pré-visualização das cores:</p>
+                  <div className="flex gap-2">
+                    <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+                      Botão Primário
+                    </Button>
+                    <Button variant="secondary">
+                      Botão Secundário
+                    </Button>
+                    <Button variant="outline">
+                      Botão Outline
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4 border-t">
+                <Button onClick={handleSaveBranding} className="bg-gradient-primary">
+                  Salvar Configurações de Marca
+                </Button>
               </div>
             </CardContent>
           </Card>
