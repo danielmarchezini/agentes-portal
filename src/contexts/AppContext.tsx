@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { applyBranding, updateFavicon, loadBrandingFromStorage, saveBrandingToStorage, DEFAULT_BRANDING } from "@/lib/branding";
 
 export type UserRole = 'owner' | 'admin' | 'bot_manager' | 'member';
 
@@ -285,6 +286,38 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [users, setUsers] = useState<User[]>(mockUsers);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Initialize branding on app load
+  useEffect(() => {
+    const savedBranding = loadBrandingFromStorage();
+    if (savedBranding) {
+      applyBranding(savedBranding);
+      updateFavicon(savedBranding.logo, organization?.name || 'AI Portal');
+    } else {
+      applyBranding(DEFAULT_BRANDING);
+      updateFavicon(undefined, organization?.name || 'AI Portal');
+    }
+  }, [organization?.name]);
+
+  // Apply branding whenever organization changes
+  useEffect(() => {
+    if (organization?.branding?.colors) {
+      const branding = {
+        logo: organization.branding.logo,
+        primaryColor: organization.branding.colors.primary || DEFAULT_BRANDING.primaryColor,
+        secondaryColor: organization.branding.colors.secondary || DEFAULT_BRANDING.secondaryColor,
+        accentColor: organization.branding.colors.accent || DEFAULT_BRANDING.accentColor,
+      };
+      saveBrandingToStorage(branding);
+      applyBranding(branding);
+      updateFavicon(branding.logo, organization.name);
+    }
+  }, [organization?.branding, organization?.name]);
+
+  const setOrganizationWithBranding = (org: Organization | null) => {
+    setOrganization(org);
+    // Branding application is handled by the useEffect above
+  };
+
   const login = async (email: string, code: string): Promise<boolean> => {
     // Mock login logic - accept any email with the code 123456
     if (code !== '123456' || !email) return false;
@@ -326,7 +359,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       currentUser,
       setCurrentUser,
       organization,
-      setOrganization,
+      setOrganization: setOrganizationWithBranding,
       agents,
       setAgents,
       users,

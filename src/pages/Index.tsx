@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const navigate = useNavigate();
-  const { login, isAuthenticated } = useApp();
+  const { login, isAuthenticated, organization } = useApp();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"email" | "code">("email");
@@ -70,12 +70,22 @@ const Index = () => {
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="flex justify-center">
-            <div className="p-3 bg-gradient-primary rounded-2xl shadow-primary">
-              <Bot className="w-8 h-8 text-primary-foreground" />
-            </div>
+            {organization?.branding?.logo ? (
+              <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-primary border">
+                <img 
+                  src={organization.branding.logo} 
+                  alt={`${organization.name} logo`}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            ) : (
+              <div className="p-3 bg-gradient-primary rounded-2xl shadow-primary">
+                <Bot className="w-8 h-8 text-primary-foreground" />
+              </div>
+            )}
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">AI Portal</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{organization?.name || 'AI Portal'}</h1>
             <p className="text-muted-foreground mt-2">
               Portal corporativo para gestão de agentes de IA
             </p>
