@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import UsersPage from "./pages/UsersPage";
 import PermissionsPage from "./pages/PermissionsPage";
 import SettingsPage from "./pages/SettingsPage";
+import ProfilePage from "./pages/ProfilePage";
 import AgentConfigPage from "./pages/AgentConfigPage";
 import AgentChatPage from "./pages/AgentChatPage";
 import OrganizationPage from "./pages/OrganizationPage";
@@ -34,6 +35,7 @@ const AppRoutes = () => {
         <Route path="/organization" element={<OrganizationPage />} />
         <Route path="/permissions" element={<PermissionsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route path="/agents/new" element={<AgentConfigPage />} />
         <Route path="/agents/edit/:id" element={<AgentConfigPage />} />
         <Route path="/agents/:id/config" element={<AgentConfigPage />} />

@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "next-themes";
-import { Settings, Palette, Bot, Mail, Bell, Shield, Upload, TestTube, RefreshCw, Sun, Moon, Monitor } from "lucide-react";
+import { Settings, Palette, Bot, Mail, Bell, Shield, Upload, TestTube, RefreshCw, Sun, Moon, Monitor, Eye, EyeOff, AlertTriangle } from "lucide-react";
 import { hexToHsl, hslToHex, resetBranding } from "@/lib/branding";
 
 const SettingsPage = () => {
@@ -50,6 +50,24 @@ const SettingsPage = () => {
     primaryColor: organization?.branding?.colors?.primary || "224 71% 60%",
     secondaryColor: organization?.branding?.colors?.secondary || "220 14% 96%",
     accentColor: organization?.branding?.colors?.accent || "142 76% 36%",
+  });
+
+  const [llmSettings, setLlmSettings] = useState({
+    openaiApiKey: localStorage.getItem('openai_api_key') || "",
+    anthropicApiKey: localStorage.getItem('anthropic_api_key') || "",
+    googleApiKey: localStorage.getItem('google_api_key') || "",
+    perplexityApiKey: localStorage.getItem('perplexity_api_key') || "",
+    defaultProvider: localStorage.getItem('default_llm_provider') || "openai",
+    defaultModel: localStorage.getItem('default_llm_model') || "gpt-4",
+    temperature: parseFloat(localStorage.getItem('llm_temperature') || "0.7"),
+    maxTokens: parseInt(localStorage.getItem('llm_max_tokens') || "2048"),
+  });
+
+  const [showKeys, setShowKeys] = useState({
+    openai: false,
+    anthropic: false,
+    google: false,
+    perplexity: false,
   });
 
   // Check permissions
@@ -181,6 +199,42 @@ const SettingsPage = () => {
         });
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveLLM = () => {
+    // Save to localStorage for now
+    localStorage.setItem('openai_api_key', llmSettings.openaiApiKey);
+    localStorage.setItem('anthropic_api_key', llmSettings.anthropicApiKey);
+    localStorage.setItem('google_api_key', llmSettings.googleApiKey);
+    localStorage.setItem('perplexity_api_key', llmSettings.perplexityApiKey);
+    localStorage.setItem('default_llm_provider', llmSettings.defaultProvider);
+    localStorage.setItem('default_llm_model', llmSettings.defaultModel);
+    localStorage.setItem('llm_temperature', llmSettings.temperature.toString());
+    localStorage.setItem('llm_max_tokens', llmSettings.maxTokens.toString());
+
+    toast({
+      title: "Configurações de LLM salvas",
+      description: "As chaves de API e configurações foram salvas localmente.",
+    });
+  };
+
+  const llmProviders = {
+    openai: {
+      name: "OpenAI",
+      models: ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo", "gpt-4o", "gpt-4o-mini"]
+    },
+    anthropic: {
+      name: "Anthropic",
+      models: ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307", "claude-3-5-sonnet-20241022"]
+    },
+    google: {
+      name: "Google",
+      models: ["gemini-pro", "gemini-pro-vision", "gemini-1.5-pro", "gemini-1.5-flash"]
+    },
+    perplexity: {
+      name: "Perplexity",
+      models: ["llama-3.1-sonar-small-128k-online", "llama-3.1-sonar-large-128k-online", "llama-3.1-sonar-huge-128k-online"]
     }
   };
 
@@ -455,17 +509,209 @@ const SettingsPage = () => {
           </Card>
         </TabsContent>
 
-        {/* Continue with other tabs... */}
+        {/* LLM Settings */}
         <TabsContent value="llm" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Configurações de LLM</CardTitle>
               <CardDescription>
-                Configure os provedores de IA disponíveis
+                Configure os provedores de IA e suas chaves de API
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Configurações de LLM serão implementadas em breve.</p>
+            <CardContent className="space-y-6">
+              <div className="p-4 border rounded-lg bg-orange-50 dark:bg-orange-950/20">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-orange-800 dark:text-orange-200">Aviso de Segurança</p>
+                    <p className="text-orange-700 dark:text-orange-300 mt-1">
+                      As chaves de API estão sendo armazenadas localmente no navegador. Para uso em produção, 
+                      recomendamos conectar ao Supabase para armazenamento seguro.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* API Keys */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Chaves de API</h3>
+                
+                {/* OpenAI */}
+                <div className="space-y-2">
+                  <Label>OpenAI API Key</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type={showKeys.openai ? "text" : "password"}
+                      value={llmSettings.openaiApiKey}
+                      onChange={(e) => setLlmSettings(prev => ({ ...prev, openaiApiKey: e.target.value }))}
+                      placeholder="sk-..."
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowKeys(prev => ({ ...prev, openai: !prev.openai }))}
+                    >
+                      {showKeys.openai ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Anthropic */}
+                <div className="space-y-2">
+                  <Label>Anthropic API Key</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type={showKeys.anthropic ? "text" : "password"}
+                      value={llmSettings.anthropicApiKey}
+                      onChange={(e) => setLlmSettings(prev => ({ ...prev, anthropicApiKey: e.target.value }))}
+                      placeholder="sk-ant-..."
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowKeys(prev => ({ ...prev, anthropic: !prev.anthropic }))}
+                    >
+                      {showKeys.anthropic ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Google */}
+                <div className="space-y-2">
+                  <Label>Google AI API Key</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type={showKeys.google ? "text" : "password"}
+                      value={llmSettings.googleApiKey}
+                      onChange={(e) => setLlmSettings(prev => ({ ...prev, googleApiKey: e.target.value }))}
+                      placeholder="AIza..."
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowKeys(prev => ({ ...prev, google: !prev.google }))}
+                    >
+                      {showKeys.google ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Perplexity */}
+                <div className="space-y-2">
+                  <Label>Perplexity API Key</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type={showKeys.perplexity ? "text" : "password"}
+                      value={llmSettings.perplexityApiKey}
+                      onChange={(e) => setLlmSettings(prev => ({ ...prev, perplexityApiKey: e.target.value }))}
+                      placeholder="pplx-..."
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowKeys(prev => ({ ...prev, perplexity: !prev.perplexity }))}
+                    >
+                      {showKeys.perplexity ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Default Provider and Model */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Configurações Padrão</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Provedor Padrão</Label>
+                    <Select
+                      value={llmSettings.defaultProvider}
+                      onValueChange={(value) => {
+                        setLlmSettings(prev => ({ 
+                          ...prev, 
+                          defaultProvider: value,
+                          defaultModel: llmProviders[value as keyof typeof llmProviders].models[0]
+                        }));
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(llmProviders).map(([key, provider]) => (
+                          <SelectItem key={key} value={key}>
+                            {provider.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Modelo Padrão</Label>
+                    <Select
+                      value={llmSettings.defaultModel}
+                      onValueChange={(value) => setLlmSettings(prev => ({ ...prev, defaultModel: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {llmProviders[llmSettings.defaultProvider as keyof typeof llmProviders]?.models.map((model) => (
+                          <SelectItem key={model} value={model}>
+                            {model}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Parameters */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Parâmetros</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Temperatura ({llmSettings.temperature})</Label>
+                    <Input
+                      type="range"
+                      min="0"
+                      max="2"
+                      step="0.1"
+                      value={llmSettings.temperature}
+                      onChange={(e) => setLlmSettings(prev => ({ ...prev, temperature: parseFloat(e.target.value) }))}
+                      className="w-full"
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      Controla a criatividade das respostas (0 = determinística, 2 = criativa)
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Máximo de Tokens</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="8192"
+                      value={llmSettings.maxTokens}
+                      onChange={(e) => setLlmSettings(prev => ({ ...prev, maxTokens: parseInt(e.target.value) || 2048 }))}
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      Limite máximo de tokens na resposta
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Button onClick={handleSaveLLM} className="w-full">
+                Salvar Configurações de LLM
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
