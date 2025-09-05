@@ -8,8 +8,8 @@ export interface BrandingConfig {
 }
 
 export const DEFAULT_BRANDING: BrandingConfig = {
-  primaryColor: "224 71% 60%", // Blue
-  secondaryColor: "220 14% 96%", // Light gray
+  primaryColor: "217 91% 60%", // Blue
+  secondaryColor: "210 40% 95%", // Light gray
   accentColor: "142 76% 36%", // Green
 };
 
