@@ -6,6 +6,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Bot, Users, Shield, Settings, Home, LogOut, MessageSquare, User, Plus, Building2 } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { hasPermission, getRoleLabel } from "@/lib/permissions";
 
 interface DashboardLayoutProps {
@@ -23,6 +25,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const navigationItems = [
     { name: "Dashboard", href: "/dashboard", icon: Home, show: true },
     { name: "Agentes", href: "/dashboard", icon: Bot, show: true },
+    { name: "Templates", href: "/agents/templates", icon: Plus, show: true },
     { name: "Chat", href: "/agents/chat", icon: MessageSquare, show: hasPermission(currentUser?.role || 'member', "Usar agentes (interagir via chat)") },
     { name: "Usuários", href: "/users", icon: Users, show: hasPermission(currentUser?.role || 'member', "Gerenciar usuários (convidar, editar, desativar)") },
     { name: "Organização", href: "/organization", icon: Building2, show: hasPermission(currentUser?.role || 'member', "Gerenciar módulos e configurações da organização") },
@@ -117,9 +120,17 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         </div>
       </aside>
 
+      {/* Header */}
+      <div className="pl-64">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-end gap-4 border-b bg-background/95 backdrop-blur px-6">
+          <ThemeToggle />
+          <NotificationCenter />
+        </header>
+      </div>
+
       {/* Main Content */}
       <div className="pl-64">
-        <main className="min-h-screen p-6">
+        <main className="min-h-[calc(100vh-4rem)] p-6 pt-20">
           {children}
         </main>
       </div>

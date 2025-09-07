@@ -14,6 +14,7 @@ import SettingsPage from "./pages/SettingsPage";
 import ProfilePage from "./pages/ProfilePage";
 import AgentConfigPage from "./pages/AgentConfigPage";
 import AgentChatPage from "./pages/AgentChatPage";
+import AgentTemplatesPage from "./pages/AgentTemplatesPage";
 import OrganizationPage from "./pages/OrganizationPage";
 import NotFound from "./pages/NotFound";
 
@@ -37,6 +38,7 @@ const AppRoutes = () => {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/agents/new" element={<AgentConfigPage />} />
+        <Route path="/agents/templates" element={<AgentTemplatesPage />} />
         <Route path="/agents/edit/:id" element={<AgentConfigPage />} />
         <Route path="/agents/:id/config" element={<AgentConfigPage />} />
         <Route path="/agents/chat" element={<AgentChatPage />} />
