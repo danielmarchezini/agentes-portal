@@ -49,6 +49,33 @@ export const permissionMatrix: PermissionCategory[] = [
           admin: true,
           owner: true
         }
+      },
+      {
+        action: "Gerenciar grupos de usuários",
+        roles: {
+          member: false,
+          bot_manager: false,
+          admin: true,
+          owner: true
+        }
+      },
+      {
+        action: "Ver logs de auditoria",
+        roles: {
+          member: false,
+          bot_manager: true,
+          admin: true,
+          owner: true
+        }
+      },
+      {
+        action: "Ver dashboard executivo",
+        roles: {
+          member: false,
+          bot_manager: false,
+          admin: true,
+          owner: true
+        }
       }
     ]
   },
@@ -113,6 +140,24 @@ export const permissionMatrix: PermissionCategory[] = [
         action: "Deletar um agente",
         roles: {
           member: false,
+          bot_manager: true,
+          admin: true,
+          owner: true
+        }
+      },
+      {
+        action: "Ver histórico de conversas",
+        roles: {
+          member: true,
+          bot_manager: true,
+          admin: true,
+          owner: true
+        }
+      },
+      {
+        action: "Compartilhar agentes",
+        roles: {
+          member: true,
           bot_manager: true,
           admin: true,
           owner: true

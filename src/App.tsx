@@ -40,6 +40,7 @@ const AppRoutes = () => {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="/users/groups" element={<UserGroupsPage />} />
+        <Route path="/user-groups" element={<UserGroupsPage />} />
         <Route path="/organization" element={<OrganizationPage />} />
         <Route path="/permissions" element={<PermissionsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
@@ -47,8 +48,10 @@ const AppRoutes = () => {
         <Route path="/agents/new" element={<AgentConfigPage />} />
         <Route path="/agents/templates" element={<AgentTemplatesPage />} />
         <Route path="/agents/sharing" element={<AgentSharingPage />} />
+        <Route path="/chat/history" element={<ChatHistoryPage />} />
         <Route path="/chat-history" element={<ChatHistoryPage />} />
         <Route path="/audit" element={<AuditPage />} />
+        <Route path="/executive-dashboard" element={<ExecutiveDashboardPage />} />
         <Route path="/executive" element={<ExecutiveDashboardPage />} />
         <Route path="/system-admin" element={<SystemAdminPage />} />
         <Route path="/agents/edit/:id" element={<AgentConfigPage />} />

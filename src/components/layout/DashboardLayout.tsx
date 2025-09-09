@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Users, Shield, Settings, Home, LogOut, MessageSquare, User, Plus, Building2 } from "lucide-react";
+import { Bot, Users, Shield, Settings, Home, LogOut, MessageSquare, User, Plus, Building2, History, Share2, UsersIcon, FileText, BarChart3, Database } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { hasPermission, getRoleLabel } from "@/lib/permissions";
@@ -22,15 +22,23 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     return null;
   }
 
+  const isSystemAdmin = currentUser?.email === 'dmarchezini@gmail.com';
+  
   const navigationItems = [
     { name: "Dashboard", href: "/dashboard", icon: Home, show: true },
     { name: "Agentes", href: "/dashboard", icon: Bot, show: true },
     { name: "Templates", href: "/agents/templates", icon: Plus, show: true },
     { name: "Chat", href: "/agents/chat", icon: MessageSquare, show: hasPermission(currentUser?.role || 'member', "Usar agentes (interagir via chat)") },
+    { name: "Histórico", href: "/chat/history", icon: History, show: hasPermission(currentUser?.role || 'member', "Ver histórico de conversas") },
+    { name: "Compartilhar", href: "/agents/sharing", icon: Share2, show: hasPermission(currentUser?.role || 'member', "Compartilhar agentes") },
     { name: "Usuários", href: "/users", icon: Users, show: hasPermission(currentUser?.role || 'member', "Gerenciar usuários (convidar, editar, desativar)") },
+    { name: "Grupos", href: "/user-groups", icon: UsersIcon, show: hasPermission(currentUser?.role || 'member', "Gerenciar grupos de usuários") },
+    { name: "Auditoria", href: "/audit", icon: FileText, show: hasPermission(currentUser?.role || 'member', "Ver logs de auditoria") },
+    { name: "Dashboard Executivo", href: "/executive-dashboard", icon: BarChart3, show: hasPermission(currentUser?.role || 'member', "Ver dashboard executivo") },
     { name: "Organização", href: "/organization", icon: Building2, show: hasPermission(currentUser?.role || 'member', "Gerenciar módulos e configurações da organização") },
     { name: "Permissões", href: "/permissions", icon: Shield, show: hasPermission(currentUser?.role || 'member', "Ver a tela de Papéis e Permissões") },
-    { name: "Configurações", href: "/settings", icon: Settings, show: hasPermission(currentUser?.role || 'member', "Gerenciar módulos e configurações da organização") }
+    { name: "Configurações", href: "/settings", icon: Settings, show: hasPermission(currentUser?.role || 'member', "Gerenciar módulos e configurações da organização") },
+    { name: "System Admin", href: "/system-admin", icon: Database, show: isSystemAdmin }
   ];
 
   const visibleNavItems = navigationItems.filter(item => item.show);

@@ -206,13 +206,22 @@ const mockUsers: User[] = [
     id: '1',
     email: 'dmarchezini@gmail.com',
     name: 'Daniel Marchezini',
-    role: 'admin',
+    role: 'owner',
     status: 'active',
     createdAt: '2024-01-15',
     lastLogin: '2024-01-20'
   },
   {
     id: '2',
+    email: 'admin@acme.com',
+    name: 'Administrador',
+    role: 'admin',
+    status: 'active',
+    createdAt: '2024-01-15',
+    lastLogin: '2024-01-20'
+  },
+  {
+    id: '3',
     email: 'manager@acme.com',
     name: 'Bot Manager Santos',
     role: 'bot_manager',
@@ -221,7 +230,7 @@ const mockUsers: User[] = [
     lastLogin: '2024-01-19'
   },
   {
-    id: '3',
+    id: '4',
     email: 'user@acme.com',
     name: 'User Oliveira',
     role: 'member',
@@ -328,11 +337,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!user) {
       const nameFromEmail = email.split('@')[0]?.replace(/[._-]/g, ' ') || 'Novo Usuário';
       const today = new Date().toISOString().slice(0, 10);
+      
+      // Verificar se é o admin do sistema
+      let role: UserRole = 'member';
+      if (email === 'dmarchezini@gmail.com') {
+        role = 'owner';
+      }
+      
       user = {
         id: String(Date.now()),
         email,
         name: nameFromEmail.charAt(0).toUpperCase() + nameFromEmail.slice(1),
-        role: 'member',
+        role,
         status: 'active',
         createdAt: today,
         lastLogin: today,
