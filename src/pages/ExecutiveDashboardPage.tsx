@@ -46,7 +46,7 @@ const performanceMetrics = [
 export default function ExecutiveDashboardPage() {
   const { currentUser } = useApp();
 
-  if (!currentUser || !hasPermission(currentUser.role, 'view_executive_dashboard')) {
+  if (!currentUser || !hasPermission(currentUser.role, 'Ver dashboard executivo')) {
     return (
       <div className="container mx-auto py-8">
         <Card>

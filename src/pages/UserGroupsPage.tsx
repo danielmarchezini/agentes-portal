@@ -78,7 +78,7 @@ export default function UserGroupsPage() {
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
 
-  if (!currentUser || !hasPermission(currentUser.role, 'manage_users')) {
+  if (!currentUser || !hasPermission(currentUser.role, 'Gerenciar grupos de usuários')) {
     return (
       <div className="container mx-auto py-8">
         <Card>

@@ -62,7 +62,7 @@ export default function ChatHistoryPage() {
   const [filterAgent, setFilterAgent] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
 
-  if (!currentUser || !hasPermission(currentUser.role, 'manage_conversations')) {
+  if (!currentUser || !hasPermission(currentUser.role, 'Ver histórico de conversas')) {
     return (
       <div className="container mx-auto py-8">
         <Card>

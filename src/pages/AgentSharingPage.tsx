@@ -59,7 +59,7 @@ export default function AgentSharingPage() {
   const [shareMessage, setShareMessage] = useState('');
   const [isPublic, setIsPublic] = useState(false);
 
-  if (!currentUser || !hasPermission(currentUser.role, 'manage_agents')) {
+  if (!currentUser || !hasPermission(currentUser.role, 'Compartilhar agentes')) {
     return (
       <div className="container mx-auto py-8">
         <Card>

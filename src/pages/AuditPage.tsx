@@ -107,7 +107,7 @@ export default function AuditPage() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterUser, setFilterUser] = useState('all');
 
-  if (!currentUser || !hasPermission(currentUser.role, 'view_audit_logs')) {
+  if (!currentUser || !hasPermission(currentUser.role, 'Ver logs de auditoria')) {
     return (
       <div className="container mx-auto py-8">
         <Card>
