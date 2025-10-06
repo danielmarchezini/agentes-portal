@@ -1,86 +1,105 @@
-import { useState } from "react"
-import { Bell, X, CheckCircle, AlertCircle, Info, Clock } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { Bell, X, CheckCircle, AlertCircle, Info, Clock, Filter } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import { supabase } from "@/lib/supabaseClient"
+import { useNavigate } from "react-router-dom"
+import { useApp } from "@/contexts/AppContext"
 
-interface Notification {
+interface DBNotification {
+  id: string
+  user_id: string
+  organization_id: string | null
+  type: string
+  title: string
+  body: string | null
+  data: any
+  read_at: string | null
+  created_at: string
+}
+
+type UiType = 'info' | 'success' | 'warning' | 'error'
+type FilterType = 'all' | 'requests' | 'system'
+
+interface NotificationUI {
   id: string
   title: string
   message: string
-  type: 'info' | 'success' | 'warning' | 'error'
+  type: UiType
   timestamp: string
   read: boolean
   actionUrl?: string
+  category: FilterType
 }
 
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    title: 'Agente criado com sucesso',
-    message: 'O agente "Assistente de Vendas" foi criado e está ativo.',
-    type: 'success',
-    timestamp: '2024-01-20T10:30:00Z',
-    read: false
-  },
-  {
-    id: '2',
-    title: 'Limite de uso atingido',
-    message: 'Você atingiu 80% do limite mensal de tokens. Considere fazer upgrade.',
-    type: 'warning',
-    timestamp: '2024-01-20T09:15:00Z',
-    read: false
-  },
-  {
-    id: '3',
-    title: 'Novo usuário adicionado',
-    message: 'Maria Silva foi adicionada à organização como Bot Manager.',
-    type: 'info',
-    timestamp: '2024-01-19T16:45:00Z',
-    read: true
-  },
-  {
-    id: '4',
-    title: 'Manutenção programada',
-    message: 'Sistema será atualizado amanhã às 02:00. Tempo estimado: 30 minutos.',
-    type: 'info',
-    timestamp: '2024-01-19T14:20:00Z',
-    read: true
-  },
-  {
-    id: '5',
-    title: 'Erro no agente de suporte',
-    message: 'O agente "Suporte Técnico" apresentou erro e foi desativado automaticamente.',
-    type: 'error',
-    timestamp: '2024-01-19T11:30:00Z',
-    read: false
-  }
-]
-
 export function NotificationCenter() {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications)
+  const { currentUser } = useApp()
+  const navigate = useNavigate()
+  const [notifications, setNotifications] = useState<NotificationUI[]>([])
   const [isOpen, setIsOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [filter, setFilter] = useState<FilterType>('all')
 
   const unreadCount = notifications.filter(n => !n.read).length
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(n => n.id === id ? { ...n, read: true } : n)
-    )
+  const fetchNotifications = async () => {
+    try {
+      if (!currentUser?.id) return
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false } as any)
+        .limit(100)
+      if (error) throw error
+      const mapped: NotificationUI[] = (data as DBNotification[]).map((n) => {
+        const cat: FilterType = n.type === 'agent_request_status' ? 'requests' : 'system'
+        const uiType: UiType = n.type === 'agent_request_status'
+          ? (n.data?.status === 'created' ? 'success' : n.data?.status === 'rejected' ? 'warning' : 'info')
+          : 'info'
+        return {
+          id: n.id,
+          title: n.title,
+          message: n.body || '',
+          type: uiType,
+          timestamp: n.created_at,
+          read: !!n.read_at,
+          category: cat,
+          actionUrl: n.data?.action_url || undefined
+        }
+      })
+      setNotifications(mapped)
+    } catch (e) {
+      // noop
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const markAllAsRead = () => {
+  useEffect(() => { fetchNotifications() }, [currentUser?.id])
+
+  const markAsRead = async (id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
+    try { await supabase.from('notifications').update({ read_at: new Date().toISOString() } as any).eq('id', id) } catch {}
+  }
+
+  const markAllAsRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+    try { await supabase.from('notifications').update({ read_at: new Date().toISOString() } as any).is('read_at', null) } catch {}
   }
 
   const removeNotification = (id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id))
+    // Opcional: deletar do banco. Mantemos apenas no UI por enquanto.
   }
 
-  const getNotificationIcon = (type: Notification['type']) => {
+  const getNotificationIcon = (type: NotificationUI['type']) => {
     switch (type) {
       case 'success':
         return <CheckCircle className="h-4 w-4 text-success" />
@@ -111,6 +130,8 @@ export function NotificationCenter() {
     })
   }
 
+  const filtered = useMemo(() => notifications.filter(n => filter === 'all' ? true : n.category === filter), [notifications, filter])
+
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
@@ -129,16 +150,28 @@ export function NotificationCenter() {
       <PopoverContent className="w-80 p-0" align="end">
         <div className="flex items-center justify-between p-4 border-b">
           <h4 className="font-medium">Notificações</h4>
-          {unreadCount > 0 && (
-            <Button variant="ghost" size="sm" onClick={markAllAsRead}>
-              Marcar todas como lidas
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
+              <SelectTrigger className="h-8 w-[130px]">
+                <SelectValue placeholder="Filtrar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all"><span className="flex items-center gap-2"><Filter className="h-3 w-3" /> Todos</span></SelectItem>
+                <SelectItem value="requests">Solicitações</SelectItem>
+                <SelectItem value="system">Sistema</SelectItem>
+              </SelectContent>
+            </Select>
+            {unreadCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={markAllAsRead} disabled={loading}>
+                Marcar todas como lidas
+              </Button>
+            )}
+          </div>
         </div>
         
         <ScrollArea className="h-96">
           <div className="p-2">
-            {notifications.length === 0 ? (
+            {filtered.length === 0 ? (
               <div className="text-center py-8">
                 <Bell className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">
@@ -147,14 +180,20 @@ export function NotificationCenter() {
               </div>
             ) : (
               <div className="space-y-1">
-                {notifications.map((notification, index) => (
+                {filtered.map((notification, index) => (
                   <div key={notification.id}>
                     <div 
                       className={cn(
                         "relative p-3 rounded-lg cursor-pointer transition-colors hover:bg-accent",
                         !notification.read && "bg-primary/5 border-l-2 border-l-primary"
                       )}
-                      onClick={() => markAsRead(notification.id)}
+                      onClick={() => {
+                        markAsRead(notification.id)
+                        if (notification.actionUrl) {
+                          setIsOpen(false)
+                          navigate(notification.actionUrl)
+                        }
+                      }}
                     >
                       <div className="flex items-start gap-3">
                         <div className="mt-0.5">
@@ -195,7 +234,7 @@ export function NotificationCenter() {
                         </div>
                       </div>
                     </div>
-                    {index < notifications.length - 1 && (
+                    {index < filtered.length - 1 && (
                       <Separator className="my-1" />
                     )}
                   </div>
@@ -205,7 +244,7 @@ export function NotificationCenter() {
           </div>
         </ScrollArea>
 
-        {notifications.length > 0 && (
+        {filtered.length > 0 && (
           <div className="p-4 border-t">
             <Button variant="outline" className="w-full" size="sm">
               Ver todas as notificações

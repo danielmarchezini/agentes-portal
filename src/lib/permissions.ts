@@ -77,6 +77,16 @@ export const permissionMatrix: PermissionCategory[] = [
           owner: true
         }
       }
+      ,
+      {
+        action: "Ver Manual",
+        roles: {
+          member: false,
+          bot_manager: true,
+          admin: true,
+          owner: true
+        }
+      }
     ]
   },
   {
@@ -148,7 +158,7 @@ export const permissionMatrix: PermissionCategory[] = [
       {
         action: "Ver histórico de conversas",
         roles: {
-          member: true,
+          member: false,
           bot_manager: true,
           admin: true,
           owner: true
@@ -157,7 +167,25 @@ export const permissionMatrix: PermissionCategory[] = [
       {
         action: "Compartilhar agentes",
         roles: {
+          member: false,
+          bot_manager: true,
+          admin: true,
+          owner: true
+        }
+      },
+      {
+        action: "Ver solicitações de agentes",
+        roles: {
           member: true,
+          bot_manager: true,
+          admin: true,
+          owner: true
+        }
+      },
+      {
+        action: "Processar solicitações de agentes",
+        roles: {
+          member: false,
           bot_manager: true,
           admin: true,
           owner: true
@@ -181,7 +209,7 @@ export const getRoleLabel = (role: UserRole): string => {
   const labels: Record<UserRole, string> = {
     owner: 'Proprietário',
     admin: 'Administrador',
-    bot_manager: 'Gestor de Bots',
+    bot_manager: 'Especialista em IA',
     member: 'Membro'
   };
   return labels[role];

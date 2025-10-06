@@ -82,26 +82,37 @@ export function hslToHex(hsl: string): string {
  */
 export function applyBranding(branding: BrandingConfig): void {
   const root = document.documentElement;
-  
-  // Apply color variables
-  root.style.setProperty('--primary', branding.primaryColor);
-  root.style.setProperty('--secondary', branding.secondaryColor);
-  root.style.setProperty('--accent', branding.accentColor);
-  
+
+  // Aceita HEX (#RRGGBB) ou HSL ("h s% l%")
+  const toHsl = (v: string): string => {
+    const val = (v || '').trim();
+    if (val.startsWith('#')) return hexToHsl(val);
+    return val; // assume já estar no formato HSL "h s% l%"
+  };
+
+  const primaryHsl = toHsl(branding.primaryColor);
+  const secondaryHsl = toHsl(branding.secondaryColor);
+  const accentHsl = toHsl(branding.accentColor);
+
+  // Apply color variables (devem ser HSL sem wrapper)
+  root.style.setProperty('--primary', primaryHsl);
+  root.style.setProperty('--secondary', secondaryHsl);
+  root.style.setProperty('--accent', accentHsl);
+
   // Generate gradient from primary color
-  const [h, s, l] = branding.primaryColor.split(' ').map((v, i) => 
+  const [h, s, l] = primaryHsl.split(' ').map((v, i) =>
     i === 0 ? parseInt(v) : parseInt(v.replace('%', ''))
   );
   const lighterL = Math.min(l + 10, 90);
   const gradientSecond = `${h} ${s}% ${lighterL}%`;
-  
-  root.style.setProperty('--gradient-primary', 
-    `linear-gradient(135deg, hsl(${branding.primaryColor}), hsl(${gradientSecond}))`
+
+  root.style.setProperty('--gradient-primary',
+    `linear-gradient(135deg, hsl(${primaryHsl}), hsl(${gradientSecond}))`
   );
-  
+
   // Update shadow colors to match primary
-  root.style.setProperty('--shadow-primary', 
-    `0 10px 30px -10px hsl(${branding.primaryColor} / 0.3)`
+  root.style.setProperty('--shadow-primary',
+    `0 10px 30px -10px hsl(${primaryHsl} / 0.3)`
   );
 }
 

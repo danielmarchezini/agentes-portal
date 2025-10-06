@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { Session } from '@supabase/supabase-js';
 import { applyBranding, updateFavicon, loadBrandingFromStorage, saveBrandingToStorage, DEFAULT_BRANDING } from "@/lib/branding";
 
 export type UserRole = 'owner' | 'admin' | 'bot_manager' | 'member';
@@ -21,13 +23,15 @@ export interface User {
   name: string;
   role: UserRole;
   status: 'active' | 'pending' | 'inactive';
-  createdAt: string;
-  lastLogin?: string;
+  created_at: string;
+  last_login?: string;
+  organization_id?: string;
 }
 
 export interface Agent {
   id: string;
   name: string;
+  slug?: string;
   description: string;
   category: string;
   model: string;
@@ -39,6 +43,28 @@ export interface Agent {
   version: number;
   usageCount: number;
   tags: string[];
+  // Novo: modo do agente e suporte a assistentes externos
+  mode?: 'custom' | 'assistant';
+  assistant_provider?: 'openai' | 'anthropic' | 'google' | string;
+  assistant_id?: string;
+  // Vector store (OpenAI) associado para reuso de arquivos
+  vector_store_id?: string | null;
+  // Opções por agente para anexos
+  allow_file_uploads?: boolean;
+  file_storage_mode?: 'openai_vector_store' | 'local_rag';
+  rag_collection_id?: string | null;
+  // Limite de retenção de histórico (nº máximo de mensagens armazenadas)
+  retention_limit?: number;
+  // Retenção por tempo (dias). 0 ou undefined = desabilitado
+  retention_days?: number;
+  // Flag derivada: indica se há compartilhamento público ativo (para UI)
+  isPublic?: boolean;
+  // Providers de LLM
+  generation_provider?: 'openai' | 'anthropic' | 'google' | 'perplexity' | 'ollama';
+  embedding_provider?: 'openai' | 'ollama';
+  embedding_model?: string;
+  // Configuração Ollama
+  ollama_url?: string;
 }
 
 export interface Organization {
@@ -83,6 +109,12 @@ export interface Organization {
     };
     logoUrl?: string;
     brandColor: string;
+    // Extended org notifications/config fields
+    responsibleName?: string;
+    responsibleRole?: string;
+    webhookUrl?: string;
+    slackWebhook?: string;
+    enableEmail?: boolean;
   };
   llmProviders?: LLMProvider[];
   branding?: {
@@ -100,212 +132,169 @@ interface AppContextType {
   setCurrentUser: (user: User | null) => void;
   organization: Organization | null;
   setOrganization: (org: Organization | null) => void;
+  // Modo suporte: owner global escolhe outra organização sem alterar seu perfil real
+  supportMode: boolean;
+  enterSupportOrg: (orgId: string) => Promise<void>;
+  exitSupportMode: () => void;
   agents: Agent[];
   setAgents: (agents: Agent[]) => void;
+  refreshAgents: () => Promise<void>;
   users: User[];
   setUsers: (users: User[]) => void;
   isAuthenticated: boolean;
-  login: (email: string, code: string) => Promise<boolean>;
+  session: Session | null;
+  requestLogin: (email: string) => Promise<{ error: any }>;
+  login: (email: string, token: string) => Promise<boolean>;
   logout: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-// Mock data
-const mockOrganization: Organization = {
-  id: '1',
-  name: 'Acme Corporation',
-  domain: 'acme.com',
-  cnpj: '12.345.678/0001-90',
-  address: {
-    street: 'Rua das Empresas',
-    number: '123',
-    complement: 'Sala 456',
-    neighborhood: 'Centro Empresarial',
-    city: 'São Paulo',
-    state: 'SP',
-    zipCode: '01234-567'
-  },
-  contacts: {
-    phone: '(11) 9999-8888',
-    email: 'contato@acme.com',
-    responsibleName: 'João Silva',
-    responsibleRole: 'CEO'
-  },
-  contract: {
-    plan: 'Enterprise',
-    startDate: '2024-01-01',
-    expirationDate: '2024-12-31',
-    monthlyValue: 2500.00,
-    status: 'active'
-  },
-  notifications: {
-    emailTemplates: {
-      welcome: 'Bem-vindo à {{organizationName}}! Sua conta foi criada com sucesso.',
-      invitation: 'Você foi convidado para participar da {{organizationName}}. Clique no link para aceitar.',
-      passwordReset: 'Solicitação de redefinição de senha para {{organizationName}}.'
-    },
-    brandColor: '#0ea5e9'
-  },
-  llmProviders: [
-    {
-      id: "openai",
-      name: "OpenAI",
-      models: [
-        { id: "gpt-4", name: "GPT-4", description: "Modelo mais avançado da OpenAI" },
-        { id: "gpt-4-turbo", name: "GPT-4 Turbo", description: "Versão otimizada do GPT-4" },
-        { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", description: "Modelo rápido e eficiente" }
-      ],
-      apiKeyRequired: true,
-      enabled: true
-    },
-    {
-      id: "anthropic",
-      name: "Anthropic",
-      models: [
-        { id: "claude-3-opus", name: "Claude 3 Opus", description: "O modelo mais poderoso da Anthropic" },
-        { id: "claude-3-sonnet", name: "Claude 3 Sonnet", description: "Equilibra performance e custo" },
-        { id: "claude-3-haiku", name: "Claude 3 Haiku", description: "Modelo rápido e econômico" }
-      ],
-      apiKeyRequired: true,
-      enabled: true
-    },
-    {
-      id: "google",
-      name: "Google",
-      models: [
-        { id: "gemini-pro", name: "Gemini Pro", description: "Modelo avançado do Google" },
-        { id: "gemini-pro-vision", name: "Gemini Pro Vision", description: "Modelo com capacidades visuais" }
-      ],
-      apiKeyRequired: true,
-      enabled: true
-    },
-    {
-      id: "cohere",
-      name: "Cohere",
-      models: [
-        { id: "command", name: "Command", description: "Modelo de linguagem da Cohere" },
-        { id: "command-light", name: "Command Light", description: "Versão otimizada do Command" }
-      ],
-      apiKeyRequired: true,
-      enabled: false
-    }
-  ],
-  branding: {
-    logo: '',
-    colors: {
-      primary: '222.2 84% 4.9%',
-      secondary: '210 40% 98%',
-      accent: '210 40% 96%'
-    }
-  }
-};
-
-const mockUsers: User[] = [
-  {
-    id: '1',
-    email: 'dmarchezini@gmail.com',
-    name: 'Daniel Marchezini',
-    role: 'owner',
-    status: 'active',
-    createdAt: '2024-01-15',
-    lastLogin: '2024-01-20'
-  },
-  {
-    id: '2',
-    email: 'admin@acme.com',
-    name: 'Administrador',
-    role: 'admin',
-    status: 'active',
-    createdAt: '2024-01-15',
-    lastLogin: '2024-01-20'
-  },
-  {
-    id: '3',
-    email: 'manager@acme.com',
-    name: 'Bot Manager Santos',
-    role: 'bot_manager',
-    status: 'active',
-    createdAt: '2024-01-16',
-    lastLogin: '2024-01-19'
-  },
-  {
-    id: '4',
-    email: 'user@acme.com',
-    name: 'User Oliveira',
-    role: 'member',
-    status: 'active',
-    createdAt: '2024-01-17',
-    lastLogin: '2024-01-18'
-  }
-];
-
-const mockAgents: Agent[] = [
-  {
-    id: '1',
-    name: 'Assistente de Análise',
-    description: 'Especializado em análise de dados e relatórios',
-    category: 'Análise',
-    model: 'gpt-4',
-    systemPrompt: 'Você é um especialista em análise de dados...',
-    status: 'active',
-    createdBy: '2',
-    createdAt: '2024-01-10',
-    updatedAt: '2024-01-15',
-    version: 2,
-    usageCount: 156,
-    tags: ['análise', 'dados', 'relatórios']
-  },
-  {
-    id: '2',
-    name: 'Criativo Marketing',
-    description: 'Criação de conteúdo e campanhas de marketing',
-    category: 'Criatividade',
-    model: 'gpt-4',
-    systemPrompt: 'Você é um especialista em marketing criativo...',
-    status: 'active',
-    createdBy: '2',
-    createdAt: '2024-01-12',
-    updatedAt: '2024-01-18',
-    version: 1,
-    usageCount: 89,
-    tags: ['marketing', 'criatividade', 'conteúdo']
-  },
-  {
-    id: '3',
-    name: 'Suporte Técnico',
-    description: 'Resolução de problemas técnicos e troubleshooting',
-    category: 'Suporte',
-    model: 'gpt-3.5-turbo',
-    systemPrompt: 'Você é um especialista em suporte técnico...',
-    status: 'inactive',
-    createdBy: '2',
-    createdAt: '2024-01-14',
-    updatedAt: '2024-01-14',
-    version: 1,
-    usageCount: 23,
-    tags: ['suporte', 'técnico', 'troubleshooting']
-  }
-];
-
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [session, setSession] = useState<Session | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [organization, setOrganization] = useState<Organization | null>(mockOrganization);
-  const [agents, setAgents] = useState<Agent[]>(mockAgents);
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [organization, setOrganization] = useState<Organization | null>(null); // Start with null
+  const [realOrganization, setRealOrganization] = useState<Organization | null>(null); // Org do perfil do usuário
+  const [agents, setAgents] = useState<Agent[]>([]); // Start with empty
+  const [users, setUsers] = useState<User[]>([]); // Start with empty
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [supportMode, setSupportMode] = useState(false);
 
-  // Initialize branding on app load
+  // Session and user profile management
   useEffect(() => {
-    const savedBranding = loadBrandingFromStorage();
-    if (savedBranding) {
-      applyBranding(savedBranding);
-      updateFavicon(savedBranding.logo, organization?.name || 'AI Portal');
-    } else {
-      applyBranding(DEFAULT_BRANDING);
-      updateFavicon(undefined, organization?.name || 'AI Portal');
-    }
-  }, [organization?.name]);
+    const isUuid = (v?: string) => !!(v && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(v));
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      setIsAuthenticated(!!session);
+      if (session) {
+        // Tenta buscar o profile pelo id; se falhar, tenta por email (fallback)
+        let userProfile: any = null;
+        try {
+          const res = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          userProfile = res.data;
+        } catch {}
+        if (!userProfile && session.user.email) {
+          try {
+            const res2 = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('email', session.user.email)
+              .maybeSingle();
+            userProfile = res2.data;
+          } catch {}
+        }
+
+        if (userProfile) {
+          setCurrentUser(userProfile as User);
+          // Fetch organization, users, and agents based on user's organization
+          const orgId = userProfile.organization_id;
+          if (isUuid(orgId)) {
+            const { data: orgData } = await supabase
+              .from('organizations')
+              .select('*')
+              .eq('id', orgId)
+              .is('deleted_at', null)
+              .maybeSingle();
+            if (orgData) {
+              setRealOrganization(orgData as Organization);
+              // Se não estiver em modo suporte, a org ativa acompanha a real
+              if (!supportMode) setOrganization(orgData as Organization);
+
+              const { data: usersData } = await supabase.from('profiles').select('*').eq('organization_id', orgId);
+              setUsers(usersData as User[]);
+
+              const { data: agentsData } = await supabase.from('agents').select('*').eq('organization_id', orgId);
+              setAgents(agentsData as Agent[]);
+            } else {
+              // Org arquivada ou inexistente: limpa org do contexto (não altera o profile no banco)
+              setRealOrganization(null);
+              if (!supportMode) setOrganization(null);
+            }
+          } else {
+            // organization_id inválido; evita 400 e segue sem org
+            setRealOrganization(null);
+            if (!supportMode) setOrganization(null);
+          }
+        }
+      }
+      setLoading(false);
+    };
+
+    getSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setIsAuthenticated(!!session);
+      if (!session) {
+        setCurrentUser(null);
+      } else {
+        // Fetch profile on sign in
+        const fetchProfile = async () => {
+          // Tenta buscar o profile pelo id; se falhar, tenta por email (fallback)
+          let userProfile: any = null;
+          try {
+            const res = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+            userProfile = res.data;
+          } catch {}
+          if (!userProfile && session.user.email) {
+            try {
+              const res2 = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('email', session.user.email)
+                .maybeSingle();
+              userProfile = res2.data;
+            } catch {}
+          }
+
+          if (userProfile) {
+            setCurrentUser(userProfile as User);
+            // Fetch organization, users, and agents based on user's organization
+            const orgId = userProfile.organization_id;
+            if (isUuid(orgId)) {
+              const { data: orgData } = await supabase
+                .from('organizations')
+                .select('*')
+                .eq('id', orgId)
+                .is('deleted_at', null)
+                .maybeSingle();
+              if (orgData) {
+                setRealOrganization(orgData as Organization);
+                if (!supportMode) setOrganization(orgData as Organization);
+
+                const { data: usersData } = await supabase.from('profiles').select('*').eq('organization_id', orgId);
+                setUsers(usersData as User[]);
+
+                const { data: agentsData } = await supabase.from('agents').select('*').eq('organization_id', orgId);
+                setAgents(agentsData as Agent[]);
+              } else {
+                setRealOrganization(null);
+                if (!supportMode) setOrganization(null);
+              }
+            } else {
+              setRealOrganization(null);
+              if (!supportMode) setOrganization(null);
+            }
+          }
+        }
+        fetchProfile();
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   // Apply branding whenever organization changes
   useEffect(() => {
@@ -324,50 +313,92 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const setOrganizationWithBranding = (org: Organization | null) => {
     setOrganization(org);
-    // Branding application is handled by the useEffect above
   };
 
-  const login = async (email: string, code: string): Promise<boolean> => {
-    // Mock login logic - accept any email with the code 123456
-    if (code !== '123456' || !email) return false;
+  // Entra em modo suporte escolhendo uma organização por ID (não altera o profile do usuário)
+  const enterSupportOrg = async (orgId: string) => {
+    if (!orgId) return;
+    const { data: orgData, error } = await supabase
+      .from('organizations')
+      .select('*')
+      .eq('id', orgId)
+      .is('deleted_at', null)
+      .maybeSingle();
+    if (error) return;
+    if (!orgData) return; // não entrar em modo suporte para org arquivada
+    setSupportMode(true);
+    setOrganization(orgData as Organization);
+  };
 
-    // Try to find existing user in state
-    let user = users.find(u => u.email === email) || null;
+  // Sai do modo suporte e restaura org real
+  const exitSupportMode = () => {
+    setSupportMode(false);
+    setOrganization(realOrganization || null);
+  };
 
-    if (!user) {
-      const nameFromEmail = email.split('@')[0]?.replace(/[._-]/g, ' ') || 'Novo Usuário';
-      const today = new Date().toISOString().slice(0, 10);
-      
-      // Verificar se é o admin do sistema
-      let role: UserRole = 'member';
-      if (email === 'dmarchezini@gmail.com') {
-        role = 'owner';
-      }
-      
-      user = {
-        id: String(Date.now()),
-        email,
-        name: nameFromEmail.charAt(0).toUpperCase() + nameFromEmail.slice(1),
-        role,
-        status: 'active',
-        createdAt: today,
-        lastLogin: today,
-      };
-      setUsers([...users, user]);
-    } else {
-      // Update last login for existing user
-      user = { ...user, lastLogin: new Date().toISOString().slice(0, 10) };
-      setUsers(users.map(u => (u.id === user!.id ? user! : u)));
+  const refreshAgents = async () => {
+    try {
+      if (!organization?.id) return;
+      const { data } = await supabase
+        .from('agents')
+        .select('*')
+        .eq('organization_id', organization.id)
+        .order('created_at', { ascending: false });
+      if (data) setAgents(data as Agent[]);
+    } catch {}
+  };
+
+  const requestLogin = async (email: string) => {
+    // Importante: não passar emailRedirectTo para forçar o envio de OTP numérico ({{ .Token }})
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: true,
+      },
+    });
+    return { error };
+  };
+
+  const login = async (email: string, token: string): Promise<boolean> => {
+    const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+    if (error || !data.session) {
+      console.error('Login failed:', error?.message);
+      return false;
     }
-
-    setCurrentUser(user);
-    setIsAuthenticated(true);
+    // onAuthStateChange will handle setting the user and session
     return true;
   };
 
-  const logout = () => {
-    setCurrentUser(null);
-    setIsAuthenticated(false);
+  const logout = async () => {
+    try {
+      // Revoga sessão no dispositivo e no servidor
+      await supabase.auth.signOut({ scope: 'global' as any });
+    } catch (e) {
+      console.warn('signOut error (ignorado):', (e as any)?.message);
+    } finally {
+      // Limpa estados do app
+      setCurrentUser(null);
+      setOrganization(null);
+      setAgents([]);
+      setUsers([]);
+      setIsAuthenticated(false);
+
+      // Limpa possíveis sessões persistidas do Supabase (sb-*)
+      try {
+        const keys: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('sb-')) keys.push(k);
+        }
+        keys.forEach(k => localStorage.removeItem(k));
+        sessionStorage.clear();
+      } catch {}
+
+      // Força reload para garantir que qualquer cache em memória seja descartado
+      if (typeof window !== 'undefined') {
+        window.location.replace('/');
+      }
+    }
   };
 
   return (
@@ -376,11 +407,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setCurrentUser,
       organization,
       setOrganization: setOrganizationWithBranding,
+      supportMode,
+      enterSupportOrg,
+      exitSupportMode,
       agents,
       setAgents,
+      refreshAgents,
       users,
       setUsers,
       isAuthenticated,
+      session,
+      requestLogin,
       login,
       logout
     }}>

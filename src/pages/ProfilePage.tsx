@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,12 +9,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { User, Lock, Settings, Upload, Save, Shield } from "lucide-react";
+import { User, Settings, Upload, Save, Shield } from "lucide-react";
 import { getRoleLabel } from "@/lib/permissions";
+import { supabase } from "@/lib/supabaseClient";
+import { useNavigate } from "react-router-dom";
 
 const ProfilePage = () => {
-  const { currentUser } = useApp();
+  const { currentUser, setCurrentUser } = useApp();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const [profileData, setProfileData] = useState({
     name: currentUser?.name || "",
@@ -25,20 +28,116 @@ const ProfilePage = () => {
     timezone: "UTC-3",
     avatar: "",
   });
-
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
-
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [saving, setSaving] = useState(false);
   const [preferences, setPreferences] = useState({
     emailNotifications: true,
     browserNotifications: false,
-    weeklyDigest: true,
-    chatHistory: true,
     language: "pt-BR",
   });
+
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        if (!currentUser?.id) return;
+        const { data } = await supabase
+          .from('profiles')
+          .select('name, email, avatar')
+          .eq('id', currentUser.id)
+          .single();
+        if (!ignore && data) {
+          setProfileData(prev => ({
+            ...prev,
+            name: data.name ?? prev.name,
+            email: data.email ?? prev.email,
+            avatar: (data as any).avatar ?? prev.avatar,
+            // Campos extras permanecem apenas no estado local, se usados pela UI
+          }));
+          try {
+            const stored = (data as any).avatar as string | null;
+            if (stored) {
+              if (stored.startsWith('http')) {
+                setAvatarUrl(stored);
+              } else {
+                const { data: signed } = await supabase.storage.from('avatars').createSignedUrl(stored, 60 * 60 * 24 * 7);
+                if (signed?.signedUrl) setAvatarUrl(signed.signedUrl);
+              }
+            }
+          } catch {}
+        }
+      } catch {}
+    })();
+    return () => { ignore = true; };
+  }, [currentUser?.id]);
+
+  // Sem senha (usamos OTP)
+
+  const handleSaveProfile = async () => {
+    try {
+      if (!currentUser?.id) return;
+      if (!profileData.name.trim()) {
+        toast({ title: 'Informe seu nome', description: 'O nome é obrigatório para continuar usando o portal.', variant: 'destructive' });
+        return;
+      }
+      setSaving(true);
+      const payload: any = { name: profileData.name.trim() };
+      const { error } = await supabase.from('profiles').update(payload).eq('id', currentUser.id);
+      if (error) throw error;
+      toast({ title: 'Perfil atualizado', description: 'Suas informações pessoais foram salvas com sucesso.' });
+      // Atualiza o contexto imediatamente para refletir no header
+      try {
+        if (currentUser) {
+          setCurrentUser({ ...currentUser, name: profileData.name.trim() } as any);
+        }
+      } catch {}
+      // Redirecionar para o dashboard somente se for a primeira vez (nome estava vazio antes)
+      if (!currentUser?.name || currentUser.name.trim() === '') {
+        navigate('/dashboard', { replace: true });
+      }
+    } catch (e: any) {
+      toast({ title: 'Falha ao salvar', description: e?.message || 'Não foi possível salvar seu perfil.', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Sem alteração de senha nesta página (autenticação via OTP)
+
+  const handleSavePreferences = () => {
+    // Save preferences
+    toast({
+      title: "Preferências salvas",
+      description: "Suas preferências foram atualizadas com sucesso.",
+    });
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (!currentUser?.id) return;
+      setUploadingAvatar(true);
+      // Caminho único por usuário
+      const filePath = `${currentUser.id}/${Date.now()}-${file.name}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
+      if (upErr) throw upErr;
+      // Gerar URL assinada e salvar apenas o caminho no perfil
+      const { data: signed } = await supabase.storage.from('avatars').createSignedUrl(filePath, 60 * 60 * 24 * 7);
+      const signedUrl = signed?.signedUrl || '';
+      const { error: updErr } = await supabase.from('profiles').update({ avatar: filePath } as any).eq('id', currentUser.id);
+      if (updErr) throw updErr;
+      setAvatarUrl(signedUrl);
+      toast({ title: 'Foto atualizada', description: 'Seu avatar foi atualizado com sucesso.' });
+    } catch (e: any) {
+      toast({ title: 'Falha ao enviar avatar', description: e?.message || 'Não foi possível atualizar sua foto.', variant: 'destructive' });
+    } finally {
+      setUploadingAvatar(false);
+      // limpar input para permitir reenviar o mesmo arquivo se necessário
+      event.currentTarget.value = '';
+    }
+  };
 
   if (!currentUser) {
     return (
@@ -52,101 +151,40 @@ const ProfilePage = () => {
     );
   }
 
-  const handleSaveProfile = () => {
-    // Save profile changes
-    toast({
-      title: "Perfil atualizado",
-      description: "Suas informações pessoais foram salvas com sucesso.",
-    });
-  };
-
-  const handleChangePassword = () => {
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast({
-        title: "Erro",
-        description: "As senhas não coincidem.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (passwordData.newPassword.length < 6) {
-      toast({
-        title: "Erro",
-        description: "A nova senha deve ter pelo menos 6 caracteres.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Change password logic here
-    toast({
-      title: "Senha alterada",
-      description: "Sua senha foi alterada com sucesso.",
-    });
-
-    setPasswordData({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
-  };
-
-  const handleSavePreferences = () => {
-    // Save preferences
-    toast({
-      title: "Preferências salvas",
-      description: "Suas preferências foram atualizadas com sucesso.",
-    });
-  };
-
-  const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setProfileData({
-          ...profileData,
-          avatar: e.target?.result as string,
-        });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Avatar className="h-16 w-16">
-          {profileData.avatar ? (
-            <img src={profileData.avatar} alt="Avatar" className="w-full h-full object-cover" />
+          {(avatarUrl || (profileData.avatar && profileData.avatar.startsWith('http'))) ? (
+            <img src={avatarUrl || profileData.avatar} alt="Avatar" className="w-full h-full object-cover" />
           ) : (
             <AvatarFallback className="bg-primary text-primary-foreground text-xl">
-              {currentUser.name.split(' ').map(n => n[0]).join('')}
+              {(profileData.name || currentUser.name || "").split(' ').filter(Boolean).map(n => n[0]).join('') || 'U'}
             </AvatarFallback>
           )}
         </Avatar>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{currentUser.name}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{profileData.name || currentUser.name || 'Seu Perfil'}</h1>
           <div className="flex items-center gap-2 mt-1">
             <Badge variant="secondary" className="flex items-center gap-1">
               <Shield className="w-3 h-3" />
               {getRoleLabel(currentUser.role)}
             </Badge>
-            <span className="text-muted-foreground">{currentUser.email}</span>
+            <span className="text-muted-foreground">{profileData.email || currentUser.email}</span>
           </div>
         </div>
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="w-4 h-4" />
             Perfil
           </TabsTrigger>
+          {/* Aba Segurança permanece apenas com informações da conta (sem alterar senha) */}
           <TabsTrigger value="security" className="flex items-center gap-2">
-            <Lock className="w-4 h-4" />
+            {/* Ícone de cadeado removido */}
             Segurança
           </TabsTrigger>
           <TabsTrigger value="preferences" className="flex items-center gap-2">
@@ -157,6 +195,12 @@ const ProfilePage = () => {
 
         {/* Profile Tab */}
         <TabsContent value="profile" className="space-y-6">
+          {!profileData.name.trim() && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 text-amber-900 p-4 text-sm">
+              <div className="font-medium mb-1">Complete seu perfil</div>
+              Informe seu nome completo para continuar usando o portal e ser identificado nas listas (ex.: membros de grupos).
+            </div>
+          )}
           <Card>
             <CardHeader>
               <CardTitle>Informações Pessoais</CardTitle>
@@ -169,11 +213,11 @@ const ProfilePage = () => {
                 <Label>Foto do Perfil</Label>
                 <div className="flex items-center gap-4">
                   <Avatar className="h-20 w-20">
-                    {profileData.avatar ? (
-                      <img src={profileData.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                    {(avatarUrl || (profileData.avatar && profileData.avatar.startsWith('http'))) ? (
+                      <img src={avatarUrl || profileData.avatar} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (
                       <AvatarFallback className="bg-primary text-primary-foreground text-xl">
-                        {currentUser.name.split(' ').map(n => n[0]).join('')}
+                        {(profileData.name || currentUser.name || "").split(' ').filter(Boolean).map(n => n[0]).join('') || 'U'}
                       </AvatarFallback>
                     )}
                   </Avatar>
@@ -185,10 +229,10 @@ const ProfilePage = () => {
                       onChange={handleAvatarUpload}
                       className="hidden"
                     />
-                    <Button asChild variant="outline">
+                    <Button asChild variant="outline" disabled={uploadingAvatar}>
                       <label htmlFor="avatar-upload" className="cursor-pointer">
                         <Upload className="w-4 h-4 mr-2" />
-                        Alterar Foto
+                        {uploadingAvatar ? 'Enviando...' : 'Alterar Foto'}
                       </label>
                     </Button>
                   </div>
@@ -202,6 +246,7 @@ const ProfilePage = () => {
                     id="name"
                     value={profileData.name}
                     onChange={(e) => setProfileData(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Digite seu nome completo"
                   />
                 </div>
                 <div className="space-y-2">
@@ -210,7 +255,9 @@ const ProfilePage = () => {
                     id="email"
                     type="email"
                     value={profileData.email}
-                    onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
+                    readOnly
+                    title="O e-mail é gerenciado pelo sistema e não pode ser alterado"
+                    className="cursor-not-allowed opacity-90"
                   />
                 </div>
               </div>
@@ -226,28 +273,9 @@ const ProfilePage = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone</Label>
-                  <Input
-                    id="phone"
-                    value={profileData.phone}
-                    onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="(11) 99999-9999"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="location">Localização</Label>
-                  <Input
-                    id="location"
-                    value={profileData.location}
-                    onChange={(e) => setProfileData(prev => ({ ...prev, location: e.target.value }))}
-                    placeholder="São Paulo, Brasil"
-                  />
-                </div>
-              </div>
+              {/* Telefone e Localização removidos */}
 
-              <Button onClick={handleSaveProfile} className="w-full">
+              <Button onClick={handleSaveProfile} className="w-full" disabled={saving}>
                 <Save className="w-4 h-4 mr-2" />
                 Salvar Alterações
               </Button>
@@ -255,53 +283,8 @@ const ProfilePage = () => {
           </Card>
         </TabsContent>
 
-        {/* Security Tab */}
+        {/* Security Tab (sem alterar senha) */}
         <TabsContent value="security" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Alterar Senha</CardTitle>
-              <CardDescription>
-                Mantenha sua conta segura alterando sua senha regularmente
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="currentPassword">Senha Atual</Label>
-                <Input
-                  id="currentPassword"
-                  type="password"
-                  value={passwordData.currentPassword}
-                  onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="newPassword">Nova Senha</Label>
-                <Input
-                  id="newPassword"
-                  type="password"
-                  value={passwordData.newPassword}
-                  onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirmar Nova Senha</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={passwordData.confirmPassword}
-                  onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                />
-              </div>
-
-              <Button onClick={handleChangePassword} className="w-full">
-                <Lock className="w-4 h-4 mr-2" />
-                Alterar Senha
-              </Button>
-            </CardContent>
-          </Card>
-
           <Card>
             <CardHeader>
               <CardTitle>Informações da Conta</CardTitle>
@@ -367,31 +350,7 @@ const ProfilePage = () => {
                   />
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Resumo Semanal</Label>
-                    <p className="text-sm text-muted-foreground">Receber um resumo semanal das atividades</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={preferences.weeklyDigest}
-                    onChange={(e) => setPreferences(prev => ({ ...prev, weeklyDigest: e.target.checked }))}
-                    className="rounded"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Histórico de Chat</Label>
-                    <p className="text-sm text-muted-foreground">Salvar o histórico das conversas com agentes</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={preferences.chatHistory}
-                    onChange={(e) => setPreferences(prev => ({ ...prev, chatHistory: e.target.checked }))}
-                    className="rounded"
-                  />
-                </div>
+                {/* Preferências removidas: Resumo Semanal e Histórico de Chat */}
               </div>
 
               <Button onClick={handleSavePreferences} className="w-full">

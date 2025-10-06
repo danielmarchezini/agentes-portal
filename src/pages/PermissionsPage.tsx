@@ -129,7 +129,7 @@ const PermissionsPage = () => {
             <div className="text-sm text-muted-foreground space-y-1">
               <div>👑 <strong>Proprietário</strong>: Controle total sobre a organização</div>
               <div>🛡️ <strong>Administrador</strong>: Gerencia usuários e configurações</div>
-              <div>🤖 <strong>Gestor de Bots</strong>: Cria e gerencia agentes de IA</div>
+              <div>🤖 <strong>Especialista em IA</strong>: Cria e gerencia agentes de IA</div>
               <div>👤 <strong>Membro</strong>: Utiliza agentes e sugere melhorias</div>
             </div>
           </div>

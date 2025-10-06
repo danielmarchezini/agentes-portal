@@ -1,111 +1,41 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Shield, Download, Filter, Search, Activity, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 import { useApp } from '@/contexts/AppContext';
 import { hasPermission } from '@/lib/permissions';
 
-interface AuditLog {
+interface AuditLogDB {
   id: string;
-  userId: string;
-  userName: string;
+  created_at: string;
+  actor_id: string | null;
+  organization_id: string | null;
   action: string;
-  resource: string;
-  resourceId: string;
-  timestamp: Date;
-  ipAddress: string;
-  userAgent: string;
-  status: 'success' | 'warning' | 'error';
-  details: string;
+  entity: string | null;
+  entity_id: string | null;
+  details: any;
 }
 
-const mockAuditLogs: AuditLog[] = [
-  {
-    id: '1',
-    userId: 'user1',
-    userName: 'João Silva',
-    action: 'LOGIN',
-    resource: 'AUTH',
-    resourceId: 'auth-session-1',
-    timestamp: new Date('2024-01-16T09:15:30'),
-    ipAddress: '192.168.1.100',
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-    status: 'success',
-    details: 'Login realizado com sucesso'
-  },
-  {
-    id: '2',
-    userId: 'user2',
-    userName: 'Maria Santos',
-    action: 'CREATE_AGENT',
-    resource: 'AGENT',
-    resourceId: 'agent-123',
-    timestamp: new Date('2024-01-16T10:30:15'),
-    ipAddress: '192.168.1.105',
-    userAgent: 'Mozilla/5.0 (MacOS) AppleWebKit/537.36',
-    status: 'success',
-    details: 'Criado agente "Assistente de Vendas Premium"'
-  },
-  {
-    id: '3',
-    userId: 'user3',
-    userName: 'Pedro Costa',
-    action: 'UPDATE_USER',
-    resource: 'USER',
-    resourceId: 'user-456',
-    timestamp: new Date('2024-01-16T11:45:22'),
-    ipAddress: '192.168.1.110',
-    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0)',
-    status: 'success',
-    details: 'Atualizado perfil do usuário'
-  },
-  {
-    id: '4',
-    userId: 'user1',
-    userName: 'João Silva',
-    action: 'DELETE_AGENT',
-    resource: 'AGENT',
-    resourceId: 'agent-789',
-    timestamp: new Date('2024-01-16T14:20:45'),
-    ipAddress: '192.168.1.100',
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-    status: 'warning',
-    details: 'Agente "Teste" foi removido'
-  },
-  {
-    id: '5',
-    userId: 'user4',
-    userName: 'Ana Oliveira',
-    action: 'FAILED_LOGIN',
-    resource: 'AUTH',
-    resourceId: 'auth-failed-1',
-    timestamp: new Date('2024-01-16T15:30:12'),
-    ipAddress: '203.0.113.5',
-    userAgent: 'Mozilla/5.0 (Unknown)',
-    status: 'error',
-    details: 'Tentativa de login com credenciais inválidas'
-  }
-];
-
-const actionTypes = [
-  'LOGIN', 'LOGOUT', 'CREATE_AGENT', 'UPDATE_AGENT', 'DELETE_AGENT',
-  'CREATE_USER', 'UPDATE_USER', 'DELETE_USER', 'SHARE_AGENT',
-  'EXPORT_DATA', 'IMPORT_DATA', 'FAILED_LOGIN'
-];
-
-const resourceTypes = ['AUTH', 'AGENT', 'USER', 'ORGANIZATION', 'SYSTEM'];
-
 export default function AuditPage() {
-  const { currentUser } = useApp();
+  const { currentUser, organization } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterAction, setFilterAction] = useState('all');
-  const [filterResource, setFilterResource] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterUser, setFilterUser] = useState('all');
+  const [filterEntity, setFilterEntity] = useState('all');
+  const [logs, setLogs] = useState<AuditLogDB[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [totalCount, setTotalCount] = useState(0);
 
   if (!currentUser || !hasPermission(currentUser.role, 'Ver logs de auditoria')) {
     return (
@@ -122,52 +52,74 @@ export default function AuditPage() {
     );
   }
 
-  const filteredLogs = mockAuditLogs.filter(log => {
-    const matchesSearch = log.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         log.details.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesAction = filterAction === 'all' || log.action === filterAction;
-    const matchesResource = filterResource === 'all' || log.resource === filterResource;
-    const matchesStatus = filterStatus === 'all' || log.status === filterStatus;
-    const matchesUser = filterUser === 'all' || log.userName === filterUser;
-    
-    return matchesSearch && matchesAction && matchesResource && matchesStatus && matchesUser;
-  });
+  useEffect(() => {
+    const loadLogs = async () => {
+      if (!organization?.id && !currentUser) return;
+      setLoading(true);
+      setErrorMsg(null);
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'success': return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'warning': return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-      case 'error': return <XCircle className="h-4 w-4 text-red-500" />;
-      default: return <Activity className="h-4 w-4 text-gray-500" />;
-    }
-  };
+      // Base select com count para paginação
+      let query = supabase
+        .from('audit_logs')
+        .select('id, created_at, actor_id, organization_id, action, entity, entity_id, details', { count: 'exact' })
+        .order('created_at', { ascending: false });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'success': return 'bg-green-500';
-      case 'warning': return 'bg-yellow-500';
-      case 'error': return 'bg-red-500';
-      default: return 'bg-gray-500';
-    }
-  };
+      if (organization?.id) query = query.eq('organization_id', organization.id);
+      if (filterAction !== 'all') query = query.eq('action', filterAction);
+      if (filterEntity !== 'all') query = query.eq('entity', filterEntity);
+      if (startDate) query = query.gte('created_at', new Date(startDate).toISOString());
+      if (endDate) {
+        const end = new Date(endDate + 'T23:59:59');
+        query = query.lte('created_at', end.toISOString());
+      }
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'success': return 'Sucesso';
-      case 'warning': return 'Aviso';
-      case 'error': return 'Erro';
-      default: return 'Desconhecido';
-    }
-  };
+      // range para paginação
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
+      if (error) {
+        setErrorMsg(error.message);
+        setLogs([]);
+        setTotalCount(0);
+      } else {
+        setLogs((data || []) as any);
+        setTotalCount(count || 0);
+      }
+      setLoading(false);
+    };
+    loadLogs();
+  }, [organization?.id, filterAction, filterEntity, startDate, endDate, page, pageSize]);
+
+  const pageItems = useMemo(() => {
+    // Busca por texto client-side nos itens da página
+    return logs.filter((log) => {
+      const text = `${log.action} ${log.entity || ''} ${JSON.stringify(log.details || {})}`.toLowerCase();
+      return text.includes(searchTerm.toLowerCase());
+    });
+  }, [logs, searchTerm]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const currentPage = Math.min(page, totalPages);
+
+  const getActionBadge = (action: string) => (
+    <Badge variant="outline" className="text-xs">{action}</Badge>
+  );
 
   const exportLogs = () => {
-    // Simulação de exportação
-    const csvContent = filteredLogs.map(log => 
-      `${log.timestamp.toISOString()},${log.userName},${log.action},${log.resource},${log.status},${log.details}`
-    ).join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    // Exporta os itens carregados (página atual com filtros server-side)
+    const rows = logs.map((l) => [
+      l.created_at,
+      l.actor_id || '',
+      l.action,
+      l.entity || '',
+      l.entity_id || '',
+      JSON.stringify(l.details || {})
+    ].join(','));
+    const header = 'created_at,actor_id,action,entity,entity_id,details';
+    const csv = [header, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -176,7 +128,7 @@ export default function AuditPage() {
   };
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
+    <div className="w-full px-4 md:px-8 py-4 space-y-3 md:space-y-4">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Auditoria do Sistema</h1>
@@ -197,7 +149,7 @@ export default function AuditPage() {
       </div>
 
       {/* Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4 xl:grid-cols-5 2xl:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total de Eventos</CardTitle>
@@ -264,45 +216,32 @@ export default function AuditPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as ações</SelectItem>
-                {actionTypes.map(action => (
+                {[...new Set(logs.map(l => l.action))].map(action => (
                   <SelectItem key={action} value={action}>{action}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Select value={filterResource} onValueChange={setFilterResource}>
+            <Select value={filterEntity} onValueChange={setFilterEntity}>
               <SelectTrigger>
-                <SelectValue placeholder="Recurso" />
+                <SelectValue placeholder="Entidade" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os recursos</SelectItem>
-                {resourceTypes.map(resource => (
-                  <SelectItem key={resource} value={resource}>{resource}</SelectItem>
-                ))}
+                <SelectItem value="all">Todas as entidades</SelectItem>
+                {[...new Set(logs.map(l => l.entity || ''))]
+                  .filter(Boolean)
+                  .map(entity => (
+                    <SelectItem key={entity} value={entity}>{entity}</SelectItem>
+                  ))}
               </SelectContent>
             </Select>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os status</SelectItem>
-                <SelectItem value="success">Sucesso</SelectItem>
-                <SelectItem value="warning">Aviso</SelectItem>
-                <SelectItem value="error">Erro</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterUser} onValueChange={setFilterUser}>
-              <SelectTrigger>
-                <SelectValue placeholder="Usuário" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os usuários</SelectItem>
-                <SelectItem value="João Silva">João Silva</SelectItem>
-                <SelectItem value="Maria Santos">Maria Santos</SelectItem>
-                <SelectItem value="Pedro Costa">Pedro Costa</SelectItem>
-                <SelectItem value="Ana Oliveira">Ana Oliveira</SelectItem>
-              </SelectContent>
-            </Select>
+            <div>
+              <label className="text-xs text-muted-foreground">Início</label>
+              <Input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPage(1); }} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Fim</label>
+              <Input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1); }} />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -316,43 +255,79 @@ export default function AuditPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {filteredLogs.map((log) => (
-              <div key={log.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3 flex-1">
-                    {getStatusIcon(log.status)}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium">{log.userName}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {log.action}
-                        </Badge>
-                        <Badge className={getStatusColor(log.status)}>
-                          {getStatusLabel(log.status)}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        {log.details}
-                      </p>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span>
-                          <Calendar className="h-3 w-3 inline mr-1" />
-                          {log.timestamp.toLocaleString('pt-BR')}
-                        </span>
-                        <span>
-                          <Shield className="h-3 w-3 inline mr-1" />
-                          {log.ipAddress}
-                        </span>
-                        <span>Recurso: {log.resource}</span>
-                        <span>ID: {log.resourceId}</span>
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Carregando...</p>
+          ) : errorMsg ? (
+            <p className="text-sm text-destructive">{errorMsg}</p>
+          ) : (
+            <div className="space-y-3">
+              {pageItems.map((log) => (
+                <div key={log.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3 flex-1">
+                      <Activity className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          {getActionBadge(log.action)}
+                          {log.entity && (
+                            <Badge variant="secondary" className="text-xs">{log.entity}</Badge>
+                          )}
+                          {log.entity_id && (
+                            <Badge variant="outline" className="text-xs">{log.entity_id}</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2 break-words">
+                          {JSON.stringify(log.details || {})}
+                        </p>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span>
+                            <Calendar className="h-3 w-3 inline mr-1" />
+                            {new Date(log.created_at).toLocaleString('pt-BR')}
+                          </span>
+                          {log.actor_id && (
+                            <span>
+                              <Shield className="h-3 w-3 inline mr-1" />
+                              {log.actor_id}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+              {pageItems.length === 0 && (
+                <p className="text-sm text-muted-foreground">Nenhum log encontrado.</p>
+              )}
+              {/* Pagination */}
+              {totalCount > 0 && (
+                <div className="flex items-center justify-between pt-4">
+                  <div className="text-xs text-muted-foreground">
+                    Página {currentPage} de {totalPages} — {totalCount} registros
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                      Anterior
+                    </Button>
+                    <Button variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                      Próxima
+                    </Button>
+                    <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
+                      <SelectTrigger className="w-[90px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

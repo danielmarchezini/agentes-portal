@@ -186,4 +186,64 @@ All colors MUST be HSL.
   .shadow-elegant {
     box-shadow: var(--shadow-elegant);
   }
+
+  /* Garantir contraste correto em botões/links com gradiente primário */
+  .bg-gradient-primary {
+    background-image: var(--gradient-primary) !important;
+    /* Fallback caso background-image seja removido por alguma classe */
+    background-color: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+  }
+
+  /* Garantir contraste correto para utilitário bg-primary */
+  .bg-primary {
+    background-color: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+  }
+  /* Em hover, manter contraste do texto mesmo que o bg mude */
+  .hover\:bg-primary-hover:hover {
+    background-color: hsl(var(--primary-hover)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+  }
+}
+
+/* Typography helper for documentation-like pages without requiring tailwind-typography */
+@layer components {
+  .prose-like h1 { @apply text-3xl font-bold tracking-tight mb-2; }
+  .prose-like h2 { @apply text-2xl font-semibold mt-6 mb-2; }
+  .prose-like h3 { @apply text-xl font-semibold mt-4 mb-1; }
+  .prose-like p { @apply leading-relaxed; }
+  .prose-like ul { @apply list-disc pl-6; }
+  .prose-like ol { @apply list-decimal pl-6; }
+  .prose-like li { @apply mb-1; }
+  .prose-like a { @apply underline; }
+}
+
+/* Print styles for clean PDF export */
+@media print {
+  /* Force light background and readable colors */
+  :root, .dark {
+    --background: 0 0% 100% !important;
+    --foreground: 222.2 84% 4.9% !important;
+    --card: 0 0% 100% !important;
+    --card-foreground: 222.2 84% 4.9% !important;
+    --border: 214.3 31.8% 91.4% !important;
+  }
+
+  /* Hide chrome (sidebar/header/nav/actions) */
+  aside, header, .print-hidden { display: none !important; }
+
+  /* Expand content to full width */
+  .pl-64, .pl-64 > main, main { padding-left: 0 !important; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* Remove heavy shadows and animations for print */
+  .shadow-elegant, .shadow-md, .shadow-lg { box-shadow: none !important; }
+  .animate-fade-in, .animate-scale-in { animation: none !important; }
+
+  /* Avoid breaking cards mid-content */
+  .card, .Card, .card-content { page-break-inside: avoid; }
+
+  /* Page margins */
+  @page { margin: 16mm; }
 }
