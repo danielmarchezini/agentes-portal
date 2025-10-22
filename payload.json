@@ -1,0 +1,11 @@
+{
+    "organization_id": null,
+    "agent_id": "d3fd885c-a29d-4871-b04b-810e833ecac6",
+    "model": "gpt-4o-mini",
+    "temperature": 0.3,
+    "system": "teste",
+    "history": [{"role":"user","content":"oi"}],
+    "use_vector_store": true,
+    "vector_store_id": "vs_68c76dbc5298819184e0b7c4615f4a6f",
+    "debug_ok_errors": true
+  }

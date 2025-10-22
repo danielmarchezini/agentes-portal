@@ -1,0 +1,244 @@
+{
+  "openai": {
+    "gpt-4o": {
+      "title": "GPT-4o (OpenAI)",
+      "description": "Modelo multimodal de alta qualidade (texto, imagem, etc.)",
+      "bestFor": "tarefas complexas e multimodais"
+    },
+    "gpt-4o-mini": {
+      "title": "GPT-4o Mini (OpenAI)",
+      "description": "Rápido e econômico com boa qualidade geral",
+      "bestFor": "alto volume, baixa latência"
+    },
+    "gpt-4-turbo": {
+      "title": "GPT-4 Turbo (OpenAI)",
+      "description": "Otimizado para custo/latência",
+      "bestFor": "tarefas complexas com custo moderado"
+    },
+    "gpt-3.5-turbo": {
+      "title": "GPT-3.5 Turbo (OpenAI)",
+      "description": "Modelo legado econômico",
+      "bestFor": "chat básico, automações simples"
+    },
+    "gpt-4.1": {
+      "title": "GPT-4.1 (OpenAI)",
+      "description": "Evolução do GPT‑4 com melhorias gerais de qualidade",
+      "bestFor": "tarefas complexas e conversação de alta qualidade"
+    },
+    "o3": {
+      "title": "o3 (OpenAI)",
+      "description": "Família focada em raciocínio e otimização",
+      "bestFor": "planejamento e problemas estruturados"
+    },
+    "o1": {
+      "title": "o1 (OpenAI)",
+      "description": "Foco em custo/latência dentro da linha ‘o’",
+      "bestFor": "assistentes de uso geral com boa eficiência"
+    },
+    "gpt-5-nano": {
+      "title": "gpt-5-nano (OpenAI)",
+      "description": "Modelo compacto/econômico para uso geral.",
+      "bestFor": "alto volume com custo mínimo e latência baixa"
+    },
+    "o3-mini": {
+      "title": "o3-mini (OpenAI)",
+      "description": "Variante enxuta focada em raciocínio com menor custo.",
+      "bestFor": "tarefas de raciocínio com orçamento reduzido"
+    },
+    "o1-mini": {
+      "title": "o1-mini (OpenAI)",
+      "description": "Versão econômica da linha o1 com boa eficiência.",
+      "bestFor": "assistentes de uso geral com custo/latência baixos"
+    },
+    "gpt-4.1-preview": {
+      "title": "GPT-4.1 Preview (OpenAI)",
+      "description": "Versão de prévia do 4.1, sujeita a mudanças.",
+      "bestFor": "testes e validações com novas capacidades",
+      "preview": true
+    },
+    "o3-preview": {
+      "title": "o3 Preview (OpenAI)",
+      "description": "Prévia da família o3 focada em raciocínio.",
+      "bestFor": "POCs de raciocínio e planejamento",
+      "preview": true
+    },
+    "gpt-4o-realtime": {
+      "title": "GPT-4o Realtime (OpenAI)",
+      "description": "Voltado para interações em tempo real (voz/stream).",
+      "bestFor": "chamadas de voz, experiências interativas",
+      "preview": true
+    },
+    "gpt-audio": {
+      "title": "gpt-audio (OpenAI)",
+      "description": "Modelos com entrada/saída de áudio integradas.",
+      "bestFor": "transcrição, síntese e assistentes de voz"
+    },
+    "gpt-audio-2025-08-28": {
+      "title": "gpt-audio-2025-08-28 (OpenAI)",
+      "description": "Versão com melhorias recentes para áudio.",
+      "bestFor": "qualidade de transcrição e TTS atualizadas"
+    }
+  },
+  "anthropic": {
+    "claude-3-5-sonnet-20241022": {
+      "title": "Claude 3.5 Sonnet (Anthropic)",
+      "description": "Alto raciocínio e qualidade contextual",
+      "bestFor": "análise e tarefas complexas"
+    },
+    "claude-3-opus-20240229": {
+      "title": "Claude 3 Opus (Anthropic)",
+      "description": "Topo de linha para tarefas exigentes",
+      "bestFor": "escrita longa e análise complexa"
+    },
+    "claude-3-sonnet-20240229": {
+      "title": "Claude 3 Sonnet (Anthropic)",
+      "description": "Equilíbrio entre custo e qualidade",
+      "bestFor": "assistentes corporativos"
+    },
+    "claude-3-haiku-20240307": {
+      "title": "Claude 3 Haiku (Anthropic)",
+      "description": "Rápido e econômico",
+      "bestFor": "alto volume, baixa latência"
+    }
+  },
+  "google": {
+    "gemini-2.5-pro": {
+      "title": "Gemini 2.5 Pro (Google)",
+      "description": "Topo de linha da família 2.5 com melhor raciocínio e qualidade.",
+      "bestFor": "tarefas complexas, raciocínio e contexto amplo"
+    },
+    "gemini-2.5-flash": {
+      "title": "Gemini 2.5 Flash (Google)",
+      "description": "Mais rápido/econômico da família 2.5 com boa qualidade.",
+      "bestFor": "uso geral com baixa latência"
+    },
+    "gemini-2.5-flash-lite": {
+      "title": "Gemini 2.5 Flash Lite (Google)",
+      "description": "Versão ainda mais leve/rápida para alto volume.",
+      "bestFor": "alto volume com custo mínimo"
+    },
+    "gemini-live-2.5-flash-preview": {
+      "title": "Gemini Live 2.5 Flash (Preview)",
+      "description": "Interações em tempo real (voz/stream), versão preview.",
+      "bestFor": "chamadas de voz e experiências interativas",
+      "preview": true
+    },
+    "gemini-2.5-flash-preview-native-audio-dialog": {
+      "title": "Gemini 2.5 Flash Preview (Native Audio Dialog)",
+      "description": "Preview com suporte nativo a áudio para diálogo.",
+      "bestFor": "assistentes de voz com áudio nativo",
+      "preview": true
+    },
+    "gemini-2.5-flash-exp-native-audio-thinking-dialog": {
+      "title": "Gemini 2.5 Flash Exp (Native Audio Thinking Dialog)",
+      "description": "Experimental com capacidades de 'thinking' em áudio nativo.",
+      "bestFor": "POCs e experimentos avançados com áudio",
+      "preview": true
+    },
+    "gemini-1.5-pro": {
+      "title": "Gemini 1.5 Pro (Google)",
+      "description": "Melhor qualidade/raciocínio da linha 1.5",
+      "bestFor": "tarefas complexas, contexto grande"
+    },
+    "gemini-1.5-flash": {
+      "title": "Gemini 1.5 Flash (Google)",
+      "description": "Mais rápido e econômico da linha 1.5",
+      "bestFor": "uso geral com latência baixa"
+    },
+    "gemini-1.5-pro-exp": {
+      "title": "Gemini 1.5 Pro (Experimental)",
+      "description": "Build experimental com recursos em avaliação.",
+      "bestFor": "testes e validações internas"
+    },
+    "gemini-1.5-flash-exp": {
+      "title": "Gemini 1.5 Flash (Experimental)",
+      "description": "Variante experimental focada em latência.",
+      "bestFor": "POCs que exigem baixa latência"
+    }
+  },
+  "perplexity": {
+    "sonar": {
+      "title": "Sonar (Perplexity)",
+      "description": "Modelo leve otimizado para velocidade",
+      "bestFor": "respostas rápidas e econômicas"
+    },
+    "sonar-pro": {
+      "title": "Sonar Pro (Perplexity)",
+      "description": "Modelo avançado para consultas profundas",
+      "bestFor": "análises mais completas com melhor qualidade"
+    },
+    "sonar-reasoning": {
+      "title": "Sonar Reasoning (Perplexity)",
+      "description": "Raciocínio rápido",
+      "bestFor": "tarefas de raciocínio com baixa latência"
+    },
+    "sonar-reasoning-pro": {
+      "title": "Sonar Reasoning Pro (Perplexity)",
+      "description": "Raciocínio de nível superior",
+      "bestFor": "problemas complexos que exigem raciocínio"
+    },
+    "sonar-deep-research": {
+      "title": "Sonar Deep Research (Perplexity)",
+      "description": "Pesquisa exaustiva (API assíncrona)",
+      "bestFor": "investigações profundas com resultados extensos"
+    }
+  },
+  "ollama": {
+    "llama3.1:8b": {
+      "title": "Llama 3.1 8B (Ollama)",
+      "description": "Modelo local equilibrado, bom para protótipos/offline",
+      "bestFor": "privacidade e ambientes sem internet"
+    },
+    "llama3.1:70b": {
+      "title": "Llama 3.1 70B (Ollama)",
+      "description": "Maior capacidade local para tarefas exigentes",
+      "bestFor": "qualidade superior mantendo dados on-premise"
+    },
+    "qwen2.5:7b": {
+      "title": "Qwen 2.5 7B (Ollama)",
+      "description": "Local com bom custo/desempenho",
+      "bestFor": "tarefas gerais locais"
+    },
+    "qwen2.5:14b": {
+      "title": "Qwen 2.5 14B (Ollama)",
+      "description": "Mais parâmetros e melhor desempenho local",
+      "bestFor": "tarefas gerais com melhor qualidade"
+    },
+    "mistral:7b": {
+      "title": "Mistral 7B (Ollama)",
+      "description": "Modelo leve e rápido para uso local",
+      "bestFor": "latência baixa em hardware modesto"
+    },
+    "phi3:3.8b": {
+      "title": "Phi-3 3.8B (Ollama)",
+      "description": "Extremamente leve, ideal para protótipos",
+      "bestFor": "dispositivos com poucos recursos"
+    },
+    "nomic-embed-text": {
+      "title": "nomic-embed-text (Local)",
+      "description": "Modelo open-source para embeddings de texto",
+      "bestFor": "on-premise/air-gapped e controle de dados"
+    }
+  },
+  "embeddings": {
+    "openai": {
+      "text-embedding-3-small": {
+        "title": "text-embedding-3-small (OpenAI)",
+        "description": "Baixo custo e bom desempenho (dimensão menor)",
+        "bestFor": "RAG de alto volume com custo controlado"
+      },
+      "text-embedding-3-large": {
+        "title": "text-embedding-3-large (OpenAI)",
+        "description": "Maior precisão semântica (dimensão maior)",
+        "bestFor": "relevância crítica e documentos complexos"
+      }
+    },
+    "ollama": {
+      "nomic-embed-text": {
+        "title": "nomic-embed-text (Local)",
+        "description": "Modelo open-source para embeddings de texto",
+        "bestFor": "on-premise/air-gapped e controle de dados"
+      }
+    }
+  }
+}

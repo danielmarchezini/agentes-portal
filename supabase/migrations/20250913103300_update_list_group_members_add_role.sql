@@ -1,0 +1,3 @@
+-- NO-OP: esta migration foi substituída por 20250913103700_drop_and_recreate_list_group_members_with_role.sql
+-- Motivo: não é possível alterar o tipo de retorno de função existente com CREATE OR REPLACE.
+-- Mantida propositalmente vazia para não quebrar a sequência de migrations.
